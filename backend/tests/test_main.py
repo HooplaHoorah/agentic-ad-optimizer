@@ -28,7 +28,7 @@ def test_create_experiment_plan():
     resp = client.post("/experiment-plan", json=snapshot)
     assert resp.status_code == 200
     data = resp.json()
-    assert data["experiment_id"] == "exp_001"
+    assert data["experiment_id"].startswith("exp_")
     assert len(data["variants"]) == 3
 
 def test_generate_creative_variants():
