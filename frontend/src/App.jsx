@@ -43,11 +43,11 @@ function App() {
   const [recommendation, setRecommendation] = useState(null);
 
   const [formValues, setFormValues] = useState({
-    productName: "",
+    productName: "Math Wars Meta DIY Kit",
     price: 49,
-    mainBenefit: "",
-    audienceSegment: "",
-    audiencePain: "",
+    mainBenefit: "Turns math practice into a co-op board game",
+    audienceSegment: "Parents of 7–12 year olds",
+    audiencePain: "Kids hate math homework",
   });
 
   const [resultRows, setResultRows] = useState([]);
@@ -212,18 +212,39 @@ function App() {
     return scores.find((s) => s.creative_id === variantId);
   };
 
+  const handleStartOver = () => {
+    setStep(1);
+    setSnapshot(null);
+    setPlan(null);
+    setCreatives([]);
+    setScores([]);
+    setRecommendation(null);
+    setError("");
+  };
+
   return (
     <div className="app-root">
       <div className="card">
-        <h1>Agentic Ad Optimizer</h1>
-        <p className="subtitle">
-          Plan experiments, generate creatives, and get next steps — all in one
-          loop.
-        </p>
+        <div className="header-row">
+          <div>
+            <h1>Agentic Ad Optimizer</h1>
+            <p className="subtitle">
+              Bring experiment design, creative generation, and optimization into one agentic loop.
+            </p>
+          </div>
+          <div className="header-actions">
+            {loading && <span className="loading-indicator">Working…</span>}
+            {step > 1 && (
+              <button className="reset-btn" onClick={handleStartOver}>
+                ↻ Start over
+              </button>
+            )}
+          </div>
+        </div>
 
         <Stepper step={step} />
 
-        {error && <div className="error-banner">⚠️ {error}</div>}
+        {error && !loading && <div className="error-banner">⚠️ {error}</div>}
         {recommendation && !error && (
           <div className="success-banner">
             ✅ Loop complete. You&apos;ve got a winner and a next test to run.

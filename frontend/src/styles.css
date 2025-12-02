@@ -38,6 +38,40 @@ h1 {
   font-size: 0.95rem;
 }
 
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.loading-indicator {
+  font-size: 0.8rem;
+  color: #facc15;
+  font-style: italic;
+}
+
+.reset-btn {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  background: transparent;
+  color: #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  margin-top: 0;
+}
+
+.reset-btn:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.1);
+}
+
 .stepper {
   display: flex;
   gap: 0.75rem;
@@ -113,7 +147,7 @@ select:focus {
   flex-wrap: wrap;
 }
 
-.field-row > label {
+.field-row>label {
   flex: 1 1 0;
 }
 
@@ -299,5 +333,45 @@ tr:last-child td {
 @media (max-width: 600px) {
   .app-root {
     padding-inline: 1rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .creative-grid {
+    grid-template-columns: 1fr;
+  }
+
+  table {
+    font-size: 0.75rem;
+  }
+
+  th,
+  td {
+    padding: 0.3rem 0.2rem;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.6rem;
+  }
+
+  .results-grid table input {
+    width: 100%;
+    min-width: 60px;
   }
 }
