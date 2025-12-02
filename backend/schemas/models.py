@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 
 class Product(BaseModel):
@@ -64,7 +64,7 @@ class CreativeVariant(BaseModel):
 
 class RubricScore(BaseModel):
     creative_id: str
-    clarity_of_promise: int
+        clarity_of_promise: int
     emotional_resonance: int
     proof_and_credibility: int
     offer_and_risk_reversal: int
