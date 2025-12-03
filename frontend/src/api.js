@@ -8,12 +8,10 @@ async function apiPost(path, body) {
     },
     body: JSON.stringify(body),
   });
-
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Request failed: ${res.status} ${text}`);
   }
-
   return res.json();
 }
 
@@ -31,4 +29,11 @@ export function scoreCreatives(creatives) {
 
 export function submitResults(results) {
   return apiPost("/results", results);
+}
+
+// Call the regenerate-image endpoint to update an existing creative's image. The
+// body should include the creative_id and optionally a spec_patch with the
+// updated prompt or other fields as defined by the backend.
+export function regenerateImage(req) {
+  return apiPost("/regenerate-image", req);
 }
