@@ -1,4 +1,4 @@
-# API Contracts
+e# API Contracts
 
 This document describes the request and response schemas for the Agentic Ad Optimizer API endpoints implemented in the FastAPI backend. These contracts align with the Pydantic models defined in `backend/schemas/models.py`.
 
@@ -70,7 +70,23 @@ A list of creative variants corresponding to each variant in the plan:
 - `headline`: ad headline
 - `call_to_action`: call to action text (e.g., "Buy Now")
 
-## Score Creatives
+- `image_url`: URL of the generated FIBO image (string). When no FIBO API key is configured, this will be a placeholder image.
+- `fibo_spec`: object representing the `FiboImageSpec` used to generate the image (e.g., structured prompt, mood, style).
+ - `image_status`: status of image generation (string; one of `"complete"`, `"pending"`, or `"error"`). Indicates whether the image was successfully generated.
+- 
+## Regenerate Image
+
+**POST /regenerate-image**
+
+Regenerates the FIBO image for an existing creative using a partial update to the FiboImageSpec.
+
+### Request body (RegenerateRequest)
+- `creative_id`: string identifier of the creative variant to regenerate
+- `spec_patch`: partial `FiboImageSpec` object containing fields to override (e.g., mood, style, palette). Only the provided fields will be merged into the existing spec.
+
+### Response body (CreativeVariant)
+Returns the updated creative variant with new `image_url`, updated `fibo_spec`, and `image_status` fields. See the CreativeVariant response above for field descriptions.
+ `
 
 **POST /score-creatives**
 
