@@ -1,4 +1,9 @@
 import random
+import os
+from typing import Dict, Any
+from pydantic import BaseModel
+from . fibo_clien. import generate_fibo_image
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from ..schemas.models import (
@@ -66,25 +71,37 @@ def generate_creative_variants(plan: ExperimentPlan):
     }
     
     for variant in plan.variants:
-        # Simple template selection based on variant ID suffix or random
-        vid = variant.variant_id[-1] if variant.variant_id else "A"
-        template = templates.get(vid, {"hook": f"Discover {variant.description}", "headline": "Learn More"})
-        
-        creatives.append(
-            CreativeVariant(
-                variant_id=variant.variant_id,
-                hook=template["hook"],
-                primary_text=f"Experience the difference with our latest offering. {variant.description}.",
-                headline=template["headline"],
+           headline=template["headline"],
                 call_to_action="Shop Now",
             )
         )
-    return creatives
-
-
-@app.post("/score-creatives", response_model=list[RubricScore])
-def evaluate_creatives(creatives: list[CreativeVariant]):
-    """Assign dummy rubric scores to creatives."""
+        creative = CreativeVariant(
+            variant_id=variant.variant_id,
+            hook=template["hook"],
+            primary_text=f"Experience the difference with our latest offering. {variant.description}.",
+            headline=template["headline"],
+            call_to_action="Shop Now",
+        )
+        # Build a default image spec keyed off the experiment plan; real logic could
+        # incorporate channel, audience and product attributes. Here we keep it
+        # simple and deterministic.
+        default_spec: Dict[str, Any] = {
+            "camera_angle": "medium",
+            "shot_type": "product_only",
+            "lighting_style": "warm",
+            "color_palette": "pastel",
+            "background_type": "studio",
+        }
+        try:
+            result = generate_fibo_image(default_spec, f"{creative.hook} {creative.headline}")
+            creative.image_url = result.image_url
+            creative.fibo_spec = result.resolved_spec
+            creative.image_status = "fibo" if os.getenv("FIBO_API_KEY") else "mocked"
+        except Exception as e:
+            creative.image_url = "https://placehold.co/600x400/png?text=Error"
+            creative.fibo_spec = default_spec
+            creative.image_status = "error"
+        creatives.append(creative)c scores to creatives."""
     scores: list[RubricScore] = []
     for creative in creatives:
         # Randomize scores slightly
@@ -125,3 +142,19 @@ def process_experiment_results(results: ExperimentResult):
         summary=f"Variant {winner.variant_id} was the clear winner with ${winner.profit} profit. We recommend iterating on its successful elements.",
     )
     return recommendation
+
+    class RegenerateRequest(BaseModel):
+    variant: CreativeVariant
+    patch_spec: Dict[str, Any]
+
+@app.post("/regenerate-image")
+async def regenerate_image(request: RegenerateRequest):
+    """Regenerate an image for a creative variant with updated spec."""
+    # Merge the existing spec with the patch, if present
+    updated_spec = {**(request.variant.fibo_spec or {}), **request.patch_spec}}
+    result = generate_fibo_image(updated_spec, f"{request.variant.variant_id}-{request.variant.headline}")
+    request.variant.image_url = result.image_url
+    request.variant.fibo_spec = updated_spec
+    request.variant.image_status = "fibo" if os.getenv("FIBO_API_KEY") else "mocked"
+    return request.variant
+
