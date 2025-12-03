@@ -61,10 +61,13 @@ class CreativeVariant(BaseModel):
     headline: str
     call_to_action: str
 
+    image_url: Optional[str] = None
+    fibo_spec: Optional[Dict[str, Any]] = None
+    image_status: Optional[str] = None
 
 class RubricScore(BaseModel):
-    creative_id: str
-        clarity_of_promise: int
+        creative_id: str
+    clarity_of_promise: int
     emotional_resonance: int
     proof_and_credibility: int
     offer_and_risk_reversal: int
@@ -72,6 +75,8 @@ class RubricScore(BaseModel):
     channel_fit: int
     curiosity_hook_factor: int
     overall_strength: float
+    feedback: str
+    
     feedback: str
 
 
