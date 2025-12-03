@@ -96,23 +96,33 @@ def generate_creative_variants(plan: ExperimentPlan):
         # Build a default image spec keyed off the experiment plan; real logic could
         # incorporate channel, audience and product attributes.  Here we keep it
         # simple and deterministic.
-        default_spec: Dict[str, Any] = {
+               # Create a base spec and adjust based on variant description
+        spec: Dict[str, Any] = {
             "camera_angle": "medium",
             "shot_type": "product_only",
             "lighting_style": "warm",
-            "color_palette": "pastel",
+            "color_palette": random.choice(["pastel", "vibrant", "neutral"]),
             "background_type": "studio",
         }
+        desc_lower = variant.description.lower()
+        if "benefit" in desc_lower or "saves time" in desc_lower:
+            spec["shot_type"] = "product_in_use"
+            spec["background_type"] = "lifestyle"
+            spec["lighting_style"] = "bright"
+        elif "social proof" in desc_lower or "user reviews" in desc_lower:
+            spec["shot_type"] = "people_with_product"
+            spec["background_type"] = "testimonial"
+            spec["lighting_style"] = "neutral" }
         try:
-            result = generate_fibo_image(default_spec, f"{creative.hook} {creative.headline}")
+            result = generate_fibo_image(spec, f"{creative.hook} {creative.headline}")
             creative.image_url = result.image_url
-            creative.fibo_spec = result.resolved_spec
+            creative.fibo_spec = result.spec
             # Mark whether we hit the real API or are in mock mode
             creative.image_status = "fibo" if os.getenv("FIBO_API_KEY") else "mocked"
         except Exception as e:
             # Log the issue and attach fallback image
             creative.image_url = "https://placehold.co/600x400/png?text=Error"
-            creative.fibo_spec = default_spec
+            creative.fibo_spec spec spec
             creative.image_status = "error"
         creatives.append(creative)
     return creatives
