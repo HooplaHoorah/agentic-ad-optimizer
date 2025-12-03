@@ -13,7 +13,7 @@ from ..schemas.models import (
     VariantResult,
     NextTestRecommendation,
 )
-from pydantic import BaseModel
+from pydantic import BaseMode
 from typing import Dict, Any
 
 from .fibo_client import generate_fibo_image
@@ -112,17 +112,17 @@ def generate_creative_variants(plan: ExperimentPlan):
         elif "social proof" in desc_lower or "user reviews" in desc_lower:
             spec["shot_type"] = "people_with_product"
             spec["background_type"] = "testimonial"
-            spec["lighting_style"] = "neutral" }
+            spec["lighting_style"] = "neutral" 
         try:
             result = generate_fibo_image(spec, f"{creative.hook} {creative.headline}")
-            creative.image_url = result.image_url
+            creative.image_url = result.image_ur
             creative.fibo_spec = result.spec
             # Mark whether we hit the real API or are in mock mode
             creative.image_status = "fibo" if os.getenv("FIBO_API_KEY") else "mocked"
         except Exception as e:
             # Log the issue and attach fallback image
             creative.image_url = "https://placehold.co/600x400/png?text=Error"
-            creative.fibo_spec spec spec
+                    creative.fibo_spec = spec
             creative.image_status = "error"
         creatives.append(creative)
     return creatives
@@ -130,14 +130,35 @@ def generate_creative_variants(plan: ExperimentPlan):
 
 @app.post("/score-creatives", response_model=list[RubricScore])
 def evaluate_creatives(creatives: list[CreativeVariant]):
-    """Assign dummy rubric scores to creatives."""
+    """Assign heuristic rubric scores to creatives based on FIBO image specs."""
     scores: list[RubricScore] = []
     for creative in creatives:
-        # Randomize scores slightly
-        clarity = random.randint(3, 5)
-        emotional = random.randint(2, 5)
-
-        scores.append(
+                # Compute baseline clarity and emotional scores based on FIBO spec
+            # Start with random base values in a moderate range
+            clarity = random.uniform(3, 5)
+            emotional = random.uniform(2, 5)
+            spec = getattr(creative, "fibo_spec", {}) or {}
+            shot = spec.get("shot_type")
+            palette = spec.get("color_palette")
+            # Adjust clarity based on shot type: product_only images are clearer, people_with_product less so
+            if shot == "product_only":
+                clarity += 2
+            elif shot == "product_in_use":
+                clarity += 1
+            elif shot == "people_with_product":
+                clarity -= 1
+            # Adjust emotional resonance: people in the shot and vibrant colors boost emotional appeal
+            if shot == "people_with_product":
+                emotional += 2
+            if palette == "vibrant":
+                emotional += 1
+            elif palette == "neutral":
+                clarity += 1
+            # Penalize scores if image generation failed
+            if getattr(creative, "image_status", "") == "error":
+                clarity = 0
+                emotional = 0
+    scores.append(
             RubricScore(
                 creative_id=creative.variant_id,
                 clarity_of_promise=clarity,
