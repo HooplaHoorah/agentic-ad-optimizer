@@ -189,14 +189,31 @@ python -m venv .venv
 
 # Activate the venv
 #   Windows (PowerShell)
+
+
+
 .\.venv\Scripts\Activate.ps1
 #   macOS / Linux
 # source .venv/bin/activate
 
 pip install -r requirements.txt
 
+
+
+### Optional: Enable FIBO image generation
+
+By default the backend returns a deterministic placeholder image for each creative. To call Bria's FIBO image generation API instead, set the following environment variables before starting the backend:
+
+```bash
+export FIBO_API_KEY=your_bria_api_key
+export FIBO_API_URL=https://engine.prod.bria-api.com/v2/image/generate
+...
 uvicorn backend.app.main:app --reload
-```
+
+
+When `FIBO_API_KEY` is not set, the backend will gracefully fall back to the placeholder image. See `backend/app/fibo_client.py` for more details.
+icorn backend.app.main:app --reload
+
 
 The backend will be available at **http://localhost:8000**  
 You can open **http://localhost:8000/docs** for the FastAPI Swagger UI.
@@ -263,6 +280,8 @@ Quick overview:
 - `POST /score-creatives` – Input: `list[CreativeVariant]`. Output: `list[RubricScore]`.
 - `POST /results` – Input: `ExperimentResult`. Output: `NextTestRecommendation`.
 
+- `POST /regenerate-image` - Input: `RegenerateRequest` containing a `creative_id` and a patch for the existing `FiboImageSpec`. Output: `CreativeVariant` with an updated `image_url`, merged `fibo_spec`, and `image_status`.
+
 ---
 
 ## Roadmap & future work
@@ -275,5 +294,7 @@ Some next steps:
 - Swap heuristic/random logic for proper bandit / Bayesian optimization
 - Use real LLMs / diffusion models for creative generation and scoring
 - Expand the frontend into a full dashboard with experiment history and approvals
+- - Surface the FIBO-generated images in the React UI and allow users to edit image parameters or regenerate images via the `/regenerate-image` endpoint.
+
 
 For now, this repo focuses on a **clean, inspectable, demo-ready agentic loop** that can be extended in multiple directions.
