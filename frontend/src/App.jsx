@@ -3,7 +3,7 @@ import {
   createExperimentPlan,
   generateCreatives,
   scoreCreatives,
-    regenerateImage,
+  regenerateImage,
   submitResults,
 } from "./api";
 
@@ -54,7 +54,7 @@ function App() {
   const [resultRows, setResultRows] = useState([]);
 
   const [patchPrompts, setPatchPrompts] = useState({});
-const [winnerVariantId, setWinnerVariantId] = useState("");
+  const [winnerVariantId, setWinnerVariantId] = useState("");
 
   useEffect(() => {
     if (plan && plan.variants && plan.variants.length > 0) {
@@ -217,48 +217,48 @@ const [winnerVariantId, setWinnerVariantId] = useState("");
 
   const handleStartOver = () => {
 
-      /**
-   * Handle updates to the prompt override for a given creative.
-   * @param {string} variantId - The variant ID for which to update the draft prompt.
-   * @param {string} value - The new prompt value.
-   */
-  const handlePatchChange = (variantId, value) => {
-    setPatchPrompts((prev) => ({ ...prev, [variantId]: value }));
-  };
+    /**
+ * Handle updates to the prompt override for a given creative.
+ * @param {string} variantId - The variant ID for which to update the draft prompt.
+ * @param {string} value - The new prompt value.
+ */
+    const handlePatchChange = (variantId, value) => {
+      setPatchPrompts((prev) => ({ ...prev, [variantId]: value }));
+    };
 
-  /**
-   * Trigger regeneration of an image using the regenerate-image endpoint.
-   * If a prompt override has been provided for the variant, it is passed in the
-   * spec_patch; otherwise an empty spec is sent. On success the updated creative
-   * replaces the old creative in state.
-   * @param {string} variantId - The variant ID to regenerate.
-   */
-  const handleRegenerateImage = async (variantId) => {
-    setError("");
-    setLoading(true);
-    try {
-      const specPatch = {};
-      if (patchPrompts[variantId]) {
-        specPatch.prompt = patchPrompts[variantId];
+    /**
+     * Trigger regeneration of an image using the regenerate-image endpoint.
+     * If a prompt override has been provided for the variant, it is passed in the
+     * spec_patch; otherwise an empty spec is sent. On success the updated creative
+     * replaces the old creative in state.
+     * @param {string} variantId - The variant ID to regenerate.
+     */
+    const handleRegenerateImage = async (variantId) => {
+      setError("");
+      setLoading(true);
+      try {
+        const specPatch = {};
+        if (patchPrompts[variantId]) {
+          specPatch.prompt = patchPrompts[variantId];
+        }
+        const body = {
+          creative_id: variantId,
+          spec_patch: specPatch,
+        };
+        const updatedCreative = await regenerateImage(body);
+        setCreatives((prev) =>
+          prev.map((c) =>
+            c.variant_id === updatedCreative.variant_id ? updatedCreative : c
+          )
+        );
+      } catch (err) {
+        console.error(err);
+        setError(err.message || "Failed to regenerate image.");
+      } finally {
+        setLoading(false);
       }
-      const body = {
-        creative_id: variantId,
-        spec_patch: specPatch,
-      };
-      const updatedCreative = await regenerateImage(body);
-      setCreatives((prev) =>
-        prev.map((c) =>
-          c.variant_id === updatedCreative.variant_id ? updatedCreative : c
-        )
-      );
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Failed to regenerate image.");
-    } finally {
-      setLoading(false);
-    }
-  };
-setStep(1);
+    };
+    setStep(1);
     setSnapshot(null);
     setPlan(null);
     setCreatives([]);
@@ -447,8 +447,9 @@ setStep(1);
                         <div className="creative-meta">
                           {plan.variants.find(
                             (v) => v.variant_id === c.variant_id
-                          
-                                              {c.image_url && (
+                          )?.description || ""}
+                        </div>
+                        {c.image_url && (
                           <div className="creative-image" style={{ marginTop: "0.5rem" }}>
                             <img
                               src={c.image_url}
@@ -462,8 +463,6 @@ setStep(1);
                             Image status: {c.image_status}
                           </div>
                         )}
-)?.description || ""}
-                        </div>
                         <div className="creative-body">
                           <strong>Hook:</strong> {c.hook}
                           <br />
@@ -484,8 +483,7 @@ setStep(1);
                             </div>
                           </div>
                         )}
-                      </di
-                                                {c.image_url && (
+                        {c.image_url && (
                           <div style={{ marginTop: "0.5rem" }}>
                             <input
                               type="text"
@@ -502,7 +500,7 @@ setStep(1);
                             </button>
                           </div>
                         )}
-v>
+                      </div>
                     );
                   })}
                 </div>
