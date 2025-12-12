@@ -226,6 +226,20 @@ function App() {
       setPatchPrompts((prev) => ({ ...prev, [variantId]: value }));
     };
 
+    const handlePreset = (variantId, presetName) => {
+      let presetPrompt = "";
+      let presetSpec = {}; // Not used directly here, but could be pre-filled into a spec viewer
+
+      if (presetName === "product") {
+        presetPrompt = "Professional product photography, studio lighting, eye level";
+      } else if (presetName === "lifestyle") {
+        presetPrompt = "Lifestyle photography, warm natural lighting, candid moment";
+      } else if (presetName === "punchy") {
+        presetPrompt = "Vibrant advertisement, high contrast, dramatic lighting, close up";
+      }
+      setPatchPrompts((prev) => ({ ...prev, [variantId]: presetPrompt }));
+    };
+
     /**
      * Trigger regeneration of an image using the regenerate-image endpoint.
      * If a prompt override has been provided for the variant, it is passed in the
@@ -241,15 +255,38 @@ function App() {
         if (patchPrompts[variantId]) {
           specPatch.prompt = patchPrompts[variantId];
         }
+
+        // Apply implicit specs based on keywords to simulate "agentic" choices without full UI controls
+        const promptLower = (patchPrompts[variantId] || "").toLowerCase();
+        if (promptLower.includes("studio")) {
+          specPatch.background_type = "studio";
+          specPatch.lighting_style = "soft";
+        } else if (promptLower.includes("lifestyle")) {
+          specPatch.background_type = "lifestyle";
+          specPatch.lighting_style = "warm";
+        } else if (promptLower.includes("dramatic")) {
+          specPatch.lighting_style = "dramatic";
+          specPatch.color_palette = "vibrant";
+        }
+
         const body = {
           creative_id: variantId,
           spec_patch: specPatch,
         };
         const updatedCreative = await regenerateImage(body);
         setCreatives((prev) =>
-          prev.map((c) =>
-            c.variant_id === updatedCreative.variant_id ? updatedCreative : c
-          )
+          prev.map((c) => {
+            if (c.variant_id === updatedCreative.variant_id) {
+              // Preserve history
+              return {
+                ...updatedCreative,
+                previous_image_url: c.image_url,
+                previous_timestamp: c.timestamp || new Date().toLocaleTimeString(),
+                timestamp: new Date().toLocaleTimeString()
+              };
+            }
+            return c;
+          })
         );
       } catch (err) {
         console.error(err);
@@ -451,19 +488,45 @@ function App() {
                         </div>
                         {c.image_url && (
                           <div className="creative-image" style={{ marginTop: "0.5rem" }}>
-                            <img
-                              src={c.image_url}
-                              alt="Creative image"
-                              style={{ width: "100%", borderRadius: "4px" }}
-                            />
+                            <div className="status-badge-container">
+                              {c.image_status === "fibo" ? (
+                                <span className="status-badge live">Bria FIBO: LIVE ✅ (JSON-controlled)</span>
+                              ) : (
+                                <span className="status-badge mock">Mock ⚠️ (set FIBO_API_KEY to generate)</span>
+                              )}
+                            </div>
+
+                            {c.previous_image_url ? (
+                              <div className="thumbnails-row">
+                                <div style={{ width: '50%' }}>
+                                  <div className="thumb-title">Previous ({c.previous_timestamp})</div>
+                                  <img
+                                    src={c.previous_image_url}
+                                    alt="Previous version"
+                                    className="thumb-img"
+                                  />
+                                </div>
+                                <div style={{ width: '50%' }}>
+                                  <div className="thumb-title">Current ({c.timestamp || new Date().toLocaleTimeString()})</div>
+                                  <img
+                                    src={c.image_url}
+                                    alt="Current version"
+                                    className="thumb-img"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <img
+                                src={c.image_url}
+                                alt="Creative image"
+                                style={{ width: "100%", borderRadius: "4px", marginTop: "0.5rem" }}
+                              />
+                            )}
                           </div>
                         )}
-                        {c.image_status && c.image_status !== "SUCCEEDED" && (
-                          <div className="image-status" style={{ marginTop: "0.25rem", color: "#555" }}>
-                            Image status: {c.image_status}
-                          </div>
-                        )}
-                        <div className="creative-body">
+                        {/* Removed raw image status text in favor of badge */}
+
+                        <div className="creative-body" style={{ marginTop: "1rem" }}>
                           <strong>Hook:</strong> {c.hook}
                           <br />
                           <strong>Primary text:</strong> {c.primary_text}
@@ -485,6 +548,11 @@ function App() {
                         )}
                         {c.image_url && (
                           <div style={{ marginTop: "0.5rem" }}>
+                            <div className="preset-row">
+                              <button className="preset-btn" onClick={() => handlePreset(c.variant_id, "product")}>Product Shot</button>
+                              <button className="preset-btn" onClick={() => handlePreset(c.variant_id, "lifestyle")}>Lifestyle</button>
+                              <button className="preset-btn" onClick={() => handlePreset(c.variant_id, "punchy")}>Punchy Ad</button>
+                            </div>
                             <input
                               type="text"
                               placeholder="Optional prompt override"
