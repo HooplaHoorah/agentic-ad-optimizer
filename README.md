@@ -67,6 +67,53 @@ npm run dev
 
 Frontend runs at: `http://localhost:5173`.
 
+## Judge Quickstart
+
+### Prerequisites
+- Node (18/20)
+- Python (3.10+)
+- Git
+
+### Backend
+```bash
+# Create and activate virtual environment
+python -m venv .venv
+# Windows PowerShell
+.venv\\Scripts\\Activate.ps1
+# macOS / Linux
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set Bria key (replace with your key)
+# Windows CMD
+set FIBO_API_KEY=your_key
+# Unix/macOS
+export FIBO_API_KEY=your_key
+
+# Run the backend
+uvicorn backend.app.main:app --port 8000
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Success criteria
+- Creative cards show a **Bria FIBO: LIVE ✅** badge (not Mock).
+- Image URLs are not from `placehold.co`.
+
+### Troubleshooting
+- **Mock ⚠️** → key not loaded or backend not restarted.
+- **401/403** → wrong key / insufficient permissions.
+- **Placeholder URLs** → Bria unreachable; check backend logs.
+- **Port conflict** → use `--port 8001` or change Vite port.
+
+
 Then open the frontend in your browser, click through the 3-step flow, and watch the agent generate a plan, creatives, scores, and a recommendation.
 
 ---
