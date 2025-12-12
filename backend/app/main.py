@@ -1,8 +1,11 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 import random
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from ..schemas.models import (
+from backend.schemas.models import (
     BusinessSnapshot,
     ExperimentPlan,
     VariantPlan,
@@ -13,7 +16,7 @@ from ..schemas.models import (
     VariantResult,
     NextTestRecommendation,
 )
-from pydantic import BaseMode
+from pydantic import BaseModel
 from typing import Dict, Any
 
 from .fibo_client import generate_fibo_image

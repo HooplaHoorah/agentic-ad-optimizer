@@ -66,7 +66,7 @@ class CreativeVariant(BaseModel):
     image_status: Optional[str] = None
 
 class RubricScore(BaseModel):
-        creative_id: str
+    creative_id: str
     clarity_of_promise: int
     emotional_resonance: int
     proof_and_credibility: int
@@ -76,8 +76,8 @@ class RubricScore(BaseModel):
     curiosity_hook_factor: int
     overall_strength: float
     feedback: str
-    
-    feedback: str
+
+
 
 
 class VariantResult(BaseModel):

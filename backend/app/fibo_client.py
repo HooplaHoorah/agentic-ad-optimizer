@@ -90,11 +90,17 @@ def generate_fibo_image(spec: Dict[str, Any], prompt: str) -> FiboImageResult:
         "https://engine.prod.bria-api.com/v2/image/generate",
     )
 
-    # Construct payload; send structured_prompt as a JSON string
+    # Construct payload; merge spec into top level
+    # payload: Dict[str, Any] = {
+    #     "prompt": prompt,
+    #     "structured_prompt": json.dumps(spec),
+    #     "sync": True,
+    # }
+    # Bria V2 fix: send spec fields at top level
     payload: Dict[str, Any] = {
         "prompt": prompt,
-        "structured_prompt": json.dumps(spec),
         "sync": True,
+        **spec,
     }
     headers = {
         "Content-Type": "application/json",
@@ -110,6 +116,8 @@ def generate_fibo_image(spec: Dict[str, Any], prompt: str) -> FiboImageResult:
         )
         # If the service returns a 202, the request is asynchronous; we
         # could poll the status_url here but for now fall back to mock
+        if response.status_code != 200:
+             print(f"Bria API Error Check: {response.text}")
         response.raise_for_status()
         data = response.json()
         # Navigate the response to extract the image URL; according to
@@ -122,7 +130,10 @@ def generate_fibo_image(spec: Dict[str, Any], prompt: str) -> FiboImageResult:
         if not image_url:
             raise ValueError("Missing image_url in FIBO response")
         return FiboImageResult(image_url=image_url, resolved_spec=spec.copy())
-    except Exception:
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Bria API Error: {e}")
         # In case of network failure, bad status, or JSON decoding
         # errors we return a deterministic error placeholder.  In a
         # production setting you might log the exception.
