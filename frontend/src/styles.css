@@ -298,6 +298,29 @@ tr:last-child td {
   color: #fecaca;
   font-size: 0.8rem;
   border: 1px solid rgba(252, 165, 165, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.retry-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  background: rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+  border: 1px solid rgba(252, 165, 165, 0.8);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.retry-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.35);
+  border-color: #fca5a5;
 }
 
 .success-banner {
@@ -369,8 +392,6 @@ tr:last-child td {
     font-size: 0.85rem;
     padding: 0.5rem 0.6rem;
   }
-
-  cursor: default;
 }
 
 .button-row {

@@ -1,0 +1,148 @@
+# Patch to resolve P0 issues in the agentic-ad-optimizer repository
+#
+# 1. Clean up duplicated code in backend/app/main.py and fix the truncated summary in
+#    process_experiment_results.  Keep one copy of each endpoint and class, and
+#    complete the summary sentence.
+# 2. Update the /regenerate-image endpoint to document behaviour more clearly (no
+#    functional changes needed beyond removing duplicates).
+# 3. Align API contracts and README to use `variant` instead of `creative_id` for
+#    the regenerate endpoint, and fix the allowable values for `image_status`.
+# 4. Update the React frontend to send the full CreativeVariant in the
+#    regenerate request instead of just a creative_id.
+# 5. Update comments in frontend/src/api.js to match the new request shape.
+
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ def process_experiment_results(results: ExperimentResult):
+-    recommendation = NextTestRecommendation(
+-        experiment_id=results.experiment_id,
+-        recommended_variants=[
+-            VariantPlan(variant_id="D", control=False, description=f"Iterate on {winner.variant_id} - Angle 1"),
+-            VariantPlan(variant_id="E", control=False, description=f"Iterate on {winner.variant_id} - Angle 2"),
+-        ],
+-        summary=f"Variant {winner.variant_id} was the clear winner with ${winner.profit} profit. "
+-        "We recommend iterating on its successful elements.",
+-    )
+-    return recommendation
++    recommendation = NextTestRecommendation(
++        experiment_id=results.experiment_id,
++        recommended_variants=[
++            VariantPlan(variant_id="D", control=False, description=f"Iterate on {winner.variant_id} - Angle 1"),
++            VariantPlan(variant_id="E", control=False, description=f"Iterate on {winner.variant_id} - Angle 2"),
++        ],
++        # Compose the summary as a single string to avoid truncation
++        summary=f"Variant {winner.variant_id} was the clear winner with ${winner.profit} profit. "
++                "We recommend iterating on its successful elements.",
++    )
++    return recommendation
+@@
+-# Updated endpoint to use the new model and log actions
+-@app.post("/regenerate-image", response_model=CreativeVariant)
+-def regenerate_image(req: RegenerateRequest) -> CreativeVariant:
+-    """Regenerate a FIBO image based on a patch to the existing spec.
+-    The incoming patch overrides the existing `fibo_spec`. The endpoint returns the updated creative.
+-    """
+-    # Merge the existing spec with the user‑supplied patch (patch values override)
+-    base_spec: Dict[str, Any] = req.variant.fibo_spec or {}
+-    # Convert SpecPatch to dict, excluding None values
+-    patch_dict = req.spec_patch.dict(exclude_unset=True)
+-    merged_spec = {**base_spec, **patch_dict}
+-    try:
+-        result = generate_fibo_image(merged_spec, f"{req.variant.hook} {req.variant.headline}")
+-        req.variant.image_url = result.image_url
+-        req.variant.fibo_spec = result.resolved_spec
+-        req.variant.image_status = "fibo" if os.getenv("FIBO_API_KEY") else "mocked"
+-        # Log concise info (no secrets)
+-        print(f"regenerate-image creative_id={req.variant.variant_id} status={req.variant.image_status}")
+-    except Exception as e:
+-        # On error, keep existing image URL but update the spec anyway
+-        req.variant.fibo_spec = merged_spec
+-        req.variant.image_status = "error"
+-        print(f"regenerate-image creative_id={req.variant.variant_id} status=error error={str(e)}")
+-    return req.variant
++# Updated endpoint to use the new model and log actions
++@app.post("/regenerate-image", response_model=CreativeVariant)
++def regenerate_image(req: RegenerateRequest) -> CreativeVariant:
++    """
++    Regenerate a FIBO image based on a patch to the existing spec.
++
++    The incoming patch overrides the existing ``fibo_spec`` on the provided CreativeVariant.
++    The endpoint returns the updated creative with a new ``image_url``, merged ``fibo_spec``,
++    and an ``image_status`` indicating whether the call hit the live FIBO API ("fibo"), used a
++    deterministic mock ("mocked"), or encountered an error ("error").
++    """
++    base_spec: Dict[str, Any] = req.variant.fibo_spec or {}
++    patch_dict = req.spec_patch.dict(exclude_unset=True)
++    merged_spec = {**base_spec, **patch_dict}
++    try:
++        result = generate_fibo_image(merged_spec, f"{req.variant.hook} {req.variant.headline}")
++        req.variant.image_url = result.image_url
++        req.variant.fibo_spec = result.resolved_spec
++        req.variant.image_status = "fibo" if os.getenv("FIBO_API_KEY") else "mocked"
++        print(f"regenerate-image creative_id={req.variant.variant_id} status={req.variant.image_status}")
++    except Exception as e:
++        req.variant.fibo_spec = merged_spec
++        req.variant.image_status = "error"
++        print(f"regenerate-image creative_id={req.variant.variant_id} status=error error={str(e)}")
++    return req.variant
+
+--- a/docs/api-contracts.md
++++ b/docs/api-contracts.md
+@@ ### Response body (list[CreativeVariant])
+-- `image_status`: status of image generation (string; one of `"complete"`, `"pending"`, or `"error"`). Indicates whether the image was successfully generated.
++- `image_status`: status of image generation (string; one of `"fibo"`, `"mocked"`, or `"error"`). A value of `"fibo"` means the image was generated using Bria's FIBO API; `"mocked"` means a deterministic placeholder was used; `"error"` indicates that image generation failed.
+@@ ### Request body (RegenerateRequest)
+- - `creative_id`: string identifier of the creative variant to regenerate
+- - `spec_patch`: partial `FiboImageSpec` object containing fields to override (e.g., mood, style, palette). Only the provided fields will be merged into the existing spec.
++ - `variant`: the full `CreativeVariant` object for the creative you want to regenerate. The backend uses this object to merge its existing `fibo_spec` with the provided patch.
++ - `spec_patch`: a partial `FiboImageSpec` object containing only the fields you want to override (e.g. `camera_angle`, `shot_type`, `lighting_style`, `color_palette`, `background_type`, `prompt`). Only provided fields are merged into the existing spec.
+
+--- a/README.md
++++ b/README.md
+@@ ## API reference
+-- `POST /regenerate-image` - Input: `RegenerateRequest` containing a `creative_id` and a patch for the existing `FiboImageSpec`. Output: `CreativeVariant` with an updated `image_url`, merged `fibo_spec`, and `image_status`.
++- `POST /regenerate-image` – Input: `RegenerateRequest` with a `variant` (the full `CreativeVariant` to be regenerated) and a `spec_patch` describing fields to override in its FIBO image spec. Output: a `CreativeVariant` with an updated `image_url`, merged `fibo_spec`, and `image_status` (`"fibo"`, `"mocked"`, or `"error"`).
+
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ function handleRegenerateImage(variantId) {
+-        const body = {
+-          creative_id: variantId,
+-          spec_patch: specPatch,
+-        };
+-        const updatedCreative = await regenerateImage(body);
++        // Find the full creative object for this variant. We need to send the full
++        // CreativeVariant in the request so the backend can merge the existing
++        // fibo_spec with our patch. See backend/docs for details.
++        const creativeObj = creatives.find((c) => c.variant_id === variantId);
++        const body = {
++          variant: creativeObj,
++          spec_patch: specPatch,
++        };
++        const updatedCreative = await regenerateImage(body);
+@@
+-               if (c.variant_id === updatedCreative.variant_id) {
++               if (c.variant_id === updatedCreative.variant_id) {
+@@
+-                 previous_image_url: c.image_url,
++                 previous_image_url: c.image_url,
+@@
+-                 timestamp: new Date().toLocaleTimeString()
++                 timestamp: new Date().toLocaleTimeString()
+--- a/frontend/src/api.js
++++ b/frontend/src/api.js
+@@
+-// Call the regenerate-image endpoint to update an existing creative's image. The
+-// body should include the creative_id and optionally a spec_patch with the
+-// updated prompt or other fields as defined by the backend.
+-export function regenerateImage(req) {
+-  return apiPost("/regenerate-image", req);
+-}
++// Call the regenerate-image endpoint to update an existing creative's image.
++// The request should include a `variant` field (the full CreativeVariant to regenerate)
++// and optionally a `spec_patch` with only the fields you want to override in
++// its FIBO spec. The backend will merge these into the existing `fibo_spec` and
++// return an updated CreativeVariant.
++export function regenerateImage(req) {
++  return apiPost("/regenerate-image", req);
++}

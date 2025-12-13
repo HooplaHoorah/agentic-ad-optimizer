@@ -16,6 +16,10 @@
 *Action: Show Before/After*
 'In seconds, the agent updates the JSON spec and regenerates the asset. We can see the clear before-and-after difference here.'
 
+*Action: Click 'Explore 8 visual variants' on Variant B*
+'But what if we want to explore the design space agentically? I just click "Explore 8 visual variants," and the agent systematically tests combinations of lighting, palette, and background. This perfectly illustrates controlled JSON-space exploration.'
+
+
 ## 4. Scoring & Optimization (30s)
 *Action: Click 'Score Creatives' -> Fill results -> Submit*
 'Finally, the agent scores the creatives against our rubric. We feed back performance data, and it recommends the next logical test to run, closing the loop.'

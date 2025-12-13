@@ -1,0 +1,14 @@
+{
+    "preset_name": "lifestyle",
+    "description": "Lifestyle photography featuring warm natural lighting and candid moments",
+    "spec_patch": {
+        "prompt": "Lifestyle photography, warm natural lighting, candid moment",
+        "camera_angle": "medium",
+        "shot_type": "product_in_use",
+        "lighting_style": "warm",
+        "color_palette": "pastel",
+        "background_type": "lifestyle"
+    },
+    "use_case": "Emotional connection, showing product in real-world context",
+    "expected_impact": "Higher emotional resonance scores, relatable imagery, contextual appeal"
+}

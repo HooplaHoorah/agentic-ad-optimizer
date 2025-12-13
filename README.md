@@ -67,52 +67,162 @@ npm run dev
 
 Frontend runs at: `http://localhost:5173`.
 
-## Judge Quickstart
+
+## Judge Quickstart (2-3 Commands to Success) ️
 
 ### Prerequisites
-- Node (18/20)
-- Python (3.10+)
-- Git
+- **Python 3.10+**
+- **Node.js 18+**
+- **Git**
+- (Optional) **Bria FIBO API Key** for production image generation
 
-### Backend
+### Step 1: Backend Setup
+
 ```bash
+# Clone the repo (if you haven't)
+git clone <repo-url>
+cd agentic-ad-optimizer
+
 # Create and activate virtual environment
 python -m venv .venv
-# Windows PowerShell
-.venv\\Scripts\\Activate.ps1
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# Windows (Command Prompt)
+.venv\Scripts\activate.bat
+
 # macOS / Linux
 source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Set Bria key (replace with your key)
-# Windows CMD
-set FIBO_API_KEY=your_key
-# Unix/macOS
-export FIBO_API_KEY=your_key
-
-# Run the backend
-uvicorn backend.app.main:app --port 8000
 ```
 
-### Frontend
+#### Set FIBO_API_KEY (Production Mode)
+
+**Important:** The app works with or without a FIBO API key, but setting it enables **LIVE** image generation.
+
+**Windows (PowerShell):**
+```powershell
+$env:FIBO_API_KEY="your_bria_api_key_here"
+```
+
+**Windows (Command Prompt):**
+```cmd
+set FIBO_API_KEY=your_bria_api_key_here
+```
+
+**macOS / Linux:**
+```bash
+export FIBO_API_KEY="your_bria_api_key_here"
+```
+
+**Persistent Setup (Optional):**
+Create a `.env` file in the root directory:
+```
+FIBO_API_KEY=your_bria_api_key_here
+FIBO_API_URL=https://engine.prod.bria-api.com/v2/image/generate
+```
+
+#### Run the Backend
+
+```bash
+# From repo root (with venv activated)
+uvicorn backend.app.main:app --reload --port 8000
+```
+
+Backend will be available at: **http://localhost:8000**  
+API docs (Swagger): **http://localhost:8000/docs**
+
+### Step 2: Frontend Setup
+
+**Open a new terminal** and run:
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-### Success criteria
-- Creative cards show a **Bria FIBO: LIVE ✅** badge (not Mock).
-- Image URLs are not from `placehold.co`.
+Frontend will be available at: **http://localhost:5173**
 
-### Troubleshooting
-- **Mock ⚠️** → key not loaded or backend not restarted.
-- **401/403** → wrong key / insufficient permissions.
-- **Placeholder URLs** → Bria unreachable; check backend logs.
-- **Port conflict** → use `--port 8001` or change Vite port.
+### Step 3: Run the Demo
 
+1. Open **http://localhost:5173** in your browser
+2. Select a **Campaign Template** (e.g., "SaaS - FlowPilot AI Scheduler")
+3. Click **"Generate experiment plan"**
+4. Click **"Generate creatives"** → wait for images to load
+5. Try a preset: click **"Lifestyle"** on Variant B, then **"Regenerate image"**
+6. Click **"Score creatives"**
+7. Navigate to **Results**, click **"Get recommendation"**
+8. See winner card with FIBO specs + score breakdown
+9. Click **"📦 Export All Artifacts"** to download results
+
+## Success Criteria (What to Look For)
+
+### ✅ LIVE Mode (with FIBO_API_KEY set)
+- Creative cards show **"Bria FIBO: LIVE ✅"** badge
+- Image URLs point to Bria CDN (not `placehold.co`)
+- Regeneration creates visibly different images based on presets
+- Backend logs show: `regenerate-image creative_id=X status=fibo`
+
+### ⚠️ Mock Mode (without FIBO_API_KEY)
+- Creative cards show **"Mock ⚠️"** badge
+- Image URLs are from `placehold.co`
+- Regeneration still works; specs update but images stay placeholder
+- Backend logs show: `regenerate-image creative_id=X status=mocked`
+- **This is expected and functional!** The app demonstrates agentic logic even in mock mode
+
+### 🏆 Agentic Loop is Visible
+- Winner creative card shows:
+  - Winner image
+  - Key FIBO parameters (shot_type, lighting_style, color_palette, etc.)
+  - Score breakdown by dimension (Clarity, Emotional, Credibility, etc.)
+- Recommendation summary references visual parameters
+- Export downloads JSON with full experiment data
+
+## Troubleshooting
+
+### Issue: Mock Badge Instead of LIVE
+**Cause:** FIBO_API_KEY not set or backend not restarted  
+**Fix:**
+1. Set the environment variable in your current terminal session
+2. Restart the backend: `uvicorn backend.app.main:app --reload --port 8000`
+3. Refresh the frontend and generate creatives again
+
+### Issue: 401/403 Error from FIBO
+**Cause:** Invalid or expired API key  
+**Fix:**  
+1. Verify your key is correct (check for extra spaces)
+2. Contact Bria support if key permissions are insufficient
+
+### Issue: Placeholder URLs Even with Key Set
+**Cause:** Bria API unreachable or network issue  
+**Fix:**
+1. Check backend logs for error messages
+2. Verify `FIBO_API_URL` is correct
+3. Test connection: `curl https://engine.prod.bria-api.com/v2/image/generate`
+
+### Issue: Port Conflict (8000 or 5173 already in use)
+**Fix:**
+- **Backend:** `uvicorn backend.app.main:app --reload --port 8001`  
+  Then update `frontend/src/api.js` to point to `http://localhost:8001`
+- **Frontend:** Edit `frontend/vite.config.js` to use a different port
+
+### Issue: Frontend Can't Reach Backend
+**Cause:** CORS or port mismatch  
+**Fix:**
+1. Verify backend is running on port 8000
+2. Check `frontend/src/api.js` has `API_BASE = "http://localhost:8000"`
+3. Open browser DevTools → Network tab to see failed requests
+
+### Issue: Export Button Doesn't Download Anything
+**Cause:** Browser popup blocker or no recommendation data  
+**Fix:**
+1. Make sure you've clicked "Get recommendation" first
+2. Check browser console for errors
+3. Allow popups/downloads for localhost
 
 Then open the frontend in your browser, click through the 3-step flow, and watch the agent generate a plan, creatives, scores, and a recommendation.
 

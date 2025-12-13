@@ -1,0 +1,14 @@
+{
+    "preset_name": "product_shot",
+    "description": "Professional product photography with studio lighting and eye-level camera angle",
+    "spec_patch": {
+        "prompt": "Professional product photography, studio lighting, eye level",
+        "camera_angle": "medium",
+        "shot_type": "product_only",
+        "lighting_style": "soft",
+        "color_palette": "neutral",
+        "background_type": "studio"
+    },
+    "use_case": "Clean, professional imagery for e-commerce listings and product showcases",
+    "expected_impact": "Higher clarity scores, professional appearance, minimal distractions"
+}

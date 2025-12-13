@@ -1,0 +1,14 @@
+{
+    "preset_name": "punchy_ad",
+    "description": "Vibrant advertisement with high contrast, dramatic lighting, and close-up framing",
+    "spec_patch": {
+        "prompt": "Vibrant advertisement, high contrast, dramatic lighting, close up",
+        "camera_angle": "close",
+        "shot_type": "product_only",
+        "lighting_style": "dramatic",
+        "color_palette": "vibrant",
+        "background_type": "studio"
+    },
+    "use_case": "Attention-grabbing social media ads, scroll-stopping creative",
+    "expected_impact": "Higher curiosity hook factor, increased visual pop, bold brand presence"
+}

@@ -1,0 +1,21 @@
+{
+    "preset_name": "lock_lighting",
+    "description": "Controlled experiment: Lock composition, change only lighting",
+    "spec_patch": {
+        "prompt": "Same framing, warmer lighting with golden hour glow",
+        "lighting_style": "warm",
+        "color_palette": "warm_golden"
+    },
+    "changed_fields": [
+        "lighting_style",
+        "color_palette"
+    ],
+    "locked_fields": [
+        "background_type",
+        "shot_type",
+        "camera_angle"
+    ],
+    "purpose": "Demonstrate precise control - only lighting changes, composition stays identical",
+    "expected_outcome": "Same product/scene with warmer, more inviting golden-hour style lighting",
+    "judge_note": "This proves FIBO isn't random - we can lock some parameters and vary others systematically"
+}

@@ -1,0 +1,50 @@
+[
+  {
+    "variant_id": "A",
+    "hook": "Stop scrolling!",
+    "primary_text": "Experience the difference with our latest offering. Control variant (Generic).",
+    "headline": "The best solution.",
+    "call_to_action": "Shop Now",
+    "image_url": "https://d1ei2xrl63k822.cloudfront.net/api/res/9b90b97d8c80432b87c1e9d289faf6e9.png?Expires=1766200775&Signature=HjkQHScuoP-42gSNcaf9Q5xMd0Gy4tffj5AsTLFnfGAvBs~qsdUf-fPh3GTIb-CBA1UOy6kBkeyuLRy2T9E568TZDXi~ftNY2douVbZJbTjpte6Wv423P-Dy~N8zPWtyTBm4WvkhayjdU2E529kQwdExV0YuFBxeag8d8G2p0jkZ~VCkaf63ZVvDt3-x9cKEPku~h~7N7HPWbfyAr65fZqeT50VsU6-r5aHAOShx5RUL-amjQ-3kiQhz4kSd5bdgE6ZfwixAhVYwRzxHg01FtzKCnosRWE41SRc1I4AiO7C9wnrJ78PtoIWA9us3o8GHGjf2-OG0rO9Nd3-Yop97HQ__&Key-Pair-Id=K2UXO1NPZVKO7N",
+    "fibo_spec": {
+      "camera_angle": "medium",
+      "shot_type": "product_only",
+      "lighting_style": "warm",
+      "color_palette": "neutral",
+      "background_type": "studio"
+    },
+    "image_status": "fibo"
+  },
+  {
+    "variant_id": "B",
+    "hook": "Tired of wasting time?",
+    "primary_text": "Experience the difference with our latest offering. Benefit-focused: FlowPilot AI Scheduler saves time.",
+    "headline": "Save hours every day.",
+    "call_to_action": "Shop Now",
+    "image_url": "https://d1ei2xrl63k822.cloudfront.net/api/res/60fbc3a82de641758b282256a50b4ac7.png?Expires=1766200792&Signature=iKE0aHh9GFMzv-Gun9dimKePTnx~0EmLBBt7JrJsa6tYUW6GwMwCWYf3~nDlwYeHmKceDC0wEoiyogiIDY2kimI0hgJ3UfJHdyAjLXIDFaMDpKJxFVLHNHlzzDtqYkwh5Ve7pxK092poON9w540db2oVKYvZX0tdrBEkhumSMasTEIDbHShSEHfufgPDXznYvlUdu0AkUIbVPTW6etI3E86xqGNVOQsRDSoH1RzHzgV57gU0-3~fHgPgmcZvc4vHp296LyhkmU7QhWK4XCPiwarEcP2Fa9yYNwEFqAKeirwhn2jmRgnB-7ZiT2olMgU37gfni0aguVH5YQ4fEi4j3g__&Key-Pair-Id=K2UXO1NPZVKO7N",
+    "fibo_spec": {
+      "camera_angle": "medium",
+      "shot_type": "product_in_use",
+      "lighting_style": "bright",
+      "color_palette": "neutral",
+      "background_type": "lifestyle"
+    },
+    "image_status": "fibo"
+  },
+  {
+    "variant_id": "C",
+    "hook": "See what everyone is talking about.",
+    "primary_text": "Experience the difference with our latest offering. Social Proof: FlowPilot AI Scheduler user reviews.",
+    "headline": "Rated 5 stars by thousands.",
+    "call_to_action": "Shop Now",
+    "image_url": "https://d1ei2xrl63k822.cloudfront.net/api/res/78e3266387df450484c045084422937f.png?Expires=1766200812&Signature=ecM9KnNDmw3TJM5lbHRmg8VPXEOB7ax~46W~l6YXNHiCb2bYkKXV~WIfNSrFiOfjBEHoVnXmzDSGy1ToL1KTSIGVfHe9iWZLwhMlEFtI262~s4rWr3cK~XmH~JegHujT71F4Wb7P--MK-G5pxd-u0iZDxROjDLdTjBCb7SPz40QALYwXYGwGHDrE2d2dXG7mUHYcDPQmMTgcuEJ2ememWpowfJfrY~fN-VnpxKSbFAJKB39dYKv9dF9d5zTnG7hY6rY1YVFdqwNWbM3p02Mu6fVWDPPjqFtOjpYaJUMhNa5A2eBH9AiYwLViKQfKIUMQbG3fuQN3ADkpfQwc4n8ijA__&Key-Pair-Id=K2UXO1NPZVKO7N",
+    "fibo_spec": {
+      "camera_angle": "medium",
+      "shot_type": "people_with_product",
+      "lighting_style": "neutral",
+      "color_palette": "neutral",
+      "background_type": "testimonial"
+    },
+    "image_status": "fibo"
+  }
+]
