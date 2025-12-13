@@ -15,9 +15,10 @@ from backend.schemas.models import (
     ExperimentResult,
     VariantResult,
     NextTestRecommendation,
+    Guardrails,
 )
 from pydantic import BaseModel
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 from .fibo_client import generate_fibo_image
 
@@ -33,9 +34,21 @@ app.add_middleware(
 )
 
 
+
 @app.get("/")
 def root():
     return {"message": "Welcome to the Agentic Ad Optimizer API"}
+
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint to confirm backend is online and check FIBO mode."""
+    is_live = bool(os.getenv("FIBO_API_KEY"))
+    return {
+        "status": "ok",
+        "mode": "live" if is_live else "mocked",
+        "fibo_enabled": is_live
+    }
 
 
 @app.post("/experiment-plan", response_model=ExperimentPlan)
@@ -63,6 +76,7 @@ def create_experiment_plan(snapshot: BusinessSnapshot):
             min_spend_per_variant=200.0,
             min_conversions=50,
         ),
+        guardrails=snapshot.guardrails
     )
     return plan
 
@@ -88,12 +102,45 @@ def generate_creative_variants(plan: ExperimentPlan):
             vid, {"hook": f"Discover {variant.description}", "headline": "Learn More"}
         )
 
+        primary_text = f"Experience the difference with our latest offering. {variant.description}."
+        
+        # Apply Guardrails - Enforce by default (Task A1)
+        guardrails_report = {"status": "pass", "issues": []}
+        if plan.guardrails:
+            # 1. Append disclaimer if missing
+            if plan.guardrails.disclaimer and plan.guardrails.disclaimer not in primary_text:
+                primary_text += f" {plan.guardrails.disclaimer}"
+
+            # 2. Append required terms if missing (Task A1)
+            # Check combined text blob
+            text_blob = (primary_text + " " + template["headline"] + " " + template["hook"]).lower()
+            for term in plan.guardrails.required_terms:
+                if term and term.lower() not in text_blob:
+                    # Satisfy requirement by appending to primary text
+                    primary_text += f" {term}."
+                    # Update text_blob for subsequent checks
+                    text_blob = (primary_text + " " + template["headline"] + " " + template["hook"]).lower()
+
+            # 3. Validation Check (Double check)
+            # Check avoid words
+            for word in plan.guardrails.avoid_words:
+                if word and word.lower() in text_blob:
+                    guardrails_report["status"] = "needs_fix"
+                    guardrails_report["issues"].append(f"Avoided word found: '{word}'")
+            
+            # Check required terms again (should be safe now, but good to verify)
+            for term in plan.guardrails.required_terms:
+                if term and term.lower() not in text_blob:
+                     guardrails_report["status"] = "needs_fix"
+                     guardrails_report["issues"].append(f"Missing required term: '{term}'")
+
         creative = CreativeVariant(
             variant_id=variant.variant_id,
             hook=template["hook"],
-            primary_text=f"Experience the difference with our latest offering. {variant.description}.",
+            primary_text=primary_text,
             headline=template["headline"],
             call_to_action="Shop Now",
+            guardrails_report=guardrails_report
         )
 
         # Build a default image spec keyed off the experiment plan; real logic could
@@ -134,52 +181,59 @@ def generate_creative_variants(plan: ExperimentPlan):
 @app.post("/score-creatives", response_model=list[RubricScore])
 def evaluate_creatives(creatives: list[CreativeVariant]):
     """Assign heuristic rubric scores to creatives based on FIBO image specs."""
-    scores: list[RubricScore] = []
-    for creative in creatives:
-        # Compute baseline clarity and emotional scores based on FIBO spec
-        # Start with random base values in a moderate range
-        clarity = random.uniform(3, 5)
-        emotional = random.uniform(2, 5)
-        spec = getattr(creative, "fibo_spec", {}) or {}
-        shot = spec.get("shot_type")
-        palette = spec.get("color_palette")
-        # Adjust clarity based on shot type: product_only images are clearer, people_with_product less so
-        if shot == "product_only":
-            clarity += 2
-        elif shot == "product_in_use":
-            clarity += 1
-        elif shot == "people_with_product":
-            clarity -= 1
-        # Adjust emotional resonance: people in the shot and vibrant colors boost emotional appeal
-        if shot == "people_with_product":
-            emotional += 2
-        if palette == "vibrant":
-            emotional += 1
-        elif palette == "neutral":
-            clarity += 1
-        # Penalize scores if image generation failed
-        if getattr(creative, "image_status", "") == "error":
-            clarity = 0
-            emotional = 0
-        
-        scores.append(
-            RubricScore(
-                creative_id=creative.variant_id,
-                clarity_of_promise=clarity,
-                emotional_resonance=emotional,
-                proof_and_credibility=random.randint(3, 5),
-                offer_and_risk_reversal=random.randint(3, 5),
-                call_to_action_score=random.randint(3, 5),
-                channel_fit=random.randint(3, 5),
-                curiosity_hook_factor=random.randint(2, 5),
-                overall_strength=(clarity + emotional) / 2 + 0.5,  # Dummy calculation
-                feedback=
-                f"Good clarity ({clarity}). Consider improving emotional resonance."
-                if emotional < 4
-                else "Strong emotional appeal!",
+    try:
+        scores: list[RubricScore] = []
+        for creative in creatives:
+            # Compute baseline clarity and emotional scores based on FIBO spec
+            # Start with random base values in a moderate range
+            clarity = random.uniform(3, 5)
+            emotional = random.uniform(2, 5)
+            spec = getattr(creative, "fibo_spec", {}) or {}
+            shot = spec.get("shot_type")
+            palette = spec.get("color_palette")
+            
+            # Adjust clarity based on shot type
+            if shot == "product_only":
+                clarity += 2
+            elif shot == "product_in_use":
+                clarity += 1
+            elif shot == "people_with_product":
+                clarity -= 1
+                
+            # Adjust emotional resonance
+            if shot == "people_with_product":
+                emotional += 2
+            if palette == "vibrant":
+                emotional += 1
+            elif palette == "neutral":
+                clarity += 1
+                
+            # Penalize scores if image generation failed
+            if getattr(creative, "image_status", "") == "error":
+                clarity = 0
+                emotional = 0
+            
+            scores.append(
+                RubricScore(
+                    creative_id=creative.variant_id,
+                    clarity_of_promise=int(clarity),
+                    emotional_resonance=int(emotional),
+                    proof_and_credibility=random.randint(3, 5),
+                    offer_and_risk_reversal=random.randint(3, 5),
+                    call_to_action_score=random.randint(3, 5),
+                    channel_fit=random.randint(3, 5),
+                    curiosity_hook_factor=random.randint(2, 5),
+                    overall_strength=(clarity + emotional) / 2 + 0.5,
+                    feedback=f"Good clarity ({int(clarity)}). Consider improving emotional resonance." if emotional < 4 else "Strong emotional appeal!",
+                )
             )
-        )
-    return scores
+        return scores
+    except Exception as e:
+        import traceback
+        with open("backend_error.log", "w") as f:
+            f.write(str(e) + "\n")
+            traceback.print_exc(file=f)
+        raise e
 
 
 @app.post("/results", response_model=NextTestRecommendation)
@@ -266,10 +320,10 @@ class ExploreVariantsResponse(BaseModel):
 
 @app.post("/explore-variants", response_model=ExploreVariantsResponse)
 def explore_variants(req: ExploreVariantsRequest) -> ExploreVariantsResponse:
-    """Generate 8 visual variants by exploring combinations of FIBO parameters.
+    """Generate visual variants by exploring combinations of FIBO parameters.
     
     This endpoint creates a cartesian product of the specified axes
-    (lighting_style, color_palette, background_type) to demonstrate
+    (e.g., lighting_style, shot_type, background_type) to demonstrate
     agentic exploration of the FIBO JSON parameter space.
     """
     import time
@@ -278,41 +332,43 @@ def explore_variants(req: ExploreVariantsRequest) -> ExploreVariantsResponse:
     start_time = time.time()
     generated_variants: list[CreativeVariant] = []
     
-    # Extract axis values
-    lighting_styles = req.axes.get("lighting_style", ["warm", "cool"])
-    color_palettes = req.axes.get("color_palette", ["warm_golden", "pastel"])
-    background_types = req.axes.get("background_type", ["studio", "natural"])
+    # Extract axis keys and value lists dynamically
+    # e.g. keys=["lighting_style", "shot_type"], values=[["warm", "cool"], ["closeup", "wide"]]
+    keys = list(req.axes.keys())
+    value_lists = list(req.axes.values())
     
-    # Generate cartesian product (2 x 2 x 2 = 8 combinations)
-    combinations = list(product(lighting_styles, color_palettes, background_types))
+    # Generate cartesian product
+    combinations = list(product(*value_lists))
     
-    for idx, (lighting, palette, background) in enumerate(combinations):
-        # Create a spec patch with these specific values
-        spec_patch = SpecPatch(
-            lighting_style=lighting,
-            color_palette=palette,
-            background_type=background
-        )
+    for idx, combo in enumerate(combinations):
+        # Create user-friendly variant ID
+        variant_suffix = f"explore_{idx+1}"
+        
+        # Create spec update dictionary from keys and this combination
+        spec_update = dict(zip(keys, combo))
         
         # Create a copy of the base variant
         variant_copy = req.base_variant.copy(deep=True)
-        variant_copy.variant_id = f"{req.base_variant.variant_id}_explore_{idx+1}"
+        variant_copy.variant_id = f"{req.base_variant.variant_id}_{variant_suffix}"
         
-        # Apply the regeneration logic (same as regenerate_image endpoint)
+        # Apply the logic (similar to regenerate_image)
         base_spec: Dict[str, Any] = variant_copy.fibo_spec or {}
-        patch_dict = spec_patch.dict(exclude_unset=True)
-        merged_spec = {**base_spec, **patch_dict}
+        merged_spec = {**base_spec, **spec_update}
         
         try:
+            # Generate image with new spec
             result = generate_fibo_image(merged_spec, f"{variant_copy.hook} {variant_copy.headline}")
             variant_copy.image_url = result.image_url
             variant_copy.fibo_spec = result.resolved_spec
             variant_copy.image_status = "fibo" if os.getenv("FIBO_API_KEY") else "mocked"
-            print(f"explore-variants generated variant {idx+1}: lighting={lighting}, palette={palette}, background={background}, status={variant_copy.image_status}")
+            
+            # Log simple status
+            print(f"explore-variants {idx+1}/{len(combinations)}: {spec_update} status={variant_copy.image_status}")
+            
         except Exception as e:
             variant_copy.fibo_spec = merged_spec
             variant_copy.image_status = "error"
-            print(f"explore-variants variant {idx+1} error: {str(e)}")
+            print(f"explore-variants {idx+1} error: {str(e)}")
         
         generated_variants.append(variant_copy)
     
@@ -324,10 +380,58 @@ def explore_variants(req: ExploreVariantsRequest) -> ExploreVariantsResponse:
         meta={
             "count": len(generated_variants),
             "runtime_ms": runtime_ms,
-            "axes_explored": {
-                "lighting_style": lighting_styles,
-                "color_palette": color_palettes,
-                "background_type": background_types
-            }
+            "axes_explored": req.axes
         }
     )
+
+
+# Task A2: Auto-fix endpoint
+class ApplyGuardrailsRequest(BaseModel):
+    variant: CreativeVariant
+    guardrails: Guardrails
+
+@app.post("/apply-guardrails", response_model=CreativeVariant)
+def apply_guardrails(req: ApplyGuardrailsRequest):
+    """Auto-fix a creative variant to satisfy guardrails."""
+    variant = req.variant.model_copy(deep=True)
+    guardrails = req.guardrails
+    changed_fields = []
+    
+    # 1. Append disclaimer if missing
+    if guardrails.disclaimer and guardrails.disclaimer not in variant.primary_text:
+        variant.primary_text += f" {guardrails.disclaimer}"
+        changed_fields.append("primary_text (disclaimer added)")
+    
+    # 2. Append required terms if missing
+    text_blob = (variant.primary_text + " " + variant.headline + " " + variant.hook).lower()
+    for term in guardrails.required_terms:
+         if term and term.lower() not in text_blob:
+             variant.primary_text += f" {term}."
+             changed_fields.append(f"primary_text (added '{term}')")
+             # Update blob for next check
+             text_blob = (variant.primary_text + " " + variant.headline + " " + variant.hook).lower()
+
+    # 3. Sanitize avoid words (simple replacement)
+    import re
+    for word in guardrails.avoid_words:
+        if word:
+             pattern = re.compile(re.escape(word), re.IGNORECASE)
+             # Check and replace in all text fields
+             if pattern.search(variant.primary_text):
+                 variant.primary_text = pattern.sub("***", variant.primary_text)
+                 changed_fields.append(f"primary_text (censored '{word}')")
+             if pattern.search(variant.headline):
+                 variant.headline = pattern.sub("***", variant.headline)
+                 changed_fields.append(f"headline (censored '{word}')")
+             if pattern.search(variant.hook):
+                 variant.hook = pattern.sub("***", variant.hook)
+                 changed_fields.append(f"hook (censored '{word}')")
+    
+    # Update report
+    variant.guardrails_report = {
+        "status": "pass", 
+        "issues": [], 
+        "fixed_issues": changed_fields
+    }
+    
+    return variant

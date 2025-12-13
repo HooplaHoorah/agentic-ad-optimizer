@@ -6,7 +6,18 @@ import {
   regenerateImage,
   submitResults,
   exploreVariants,
+  checkHealth,
+  applyGuardrails,
 } from "./api";
+
+const AXIS_OPTIONS = {
+  lighting_style: { label: "Lighting", values: ["warm", "cool"] },
+  color_palette: { label: "Palette", values: ["warm_golden", "pastel"] },
+  background_type: { label: "Background", values: ["studio", "natural"] },
+  shot_type: { label: "Shot Type", values: ["product_only", "lifestyle"] },
+  camera_angle: { label: "Camera Angle", values: ["eye_level", "high_angle"] },
+  subject_distance: { label: "Subject Dist.", values: ["close", "medium"] }
+};
 
 function Stepper({ step }) {
   const steps = [
@@ -38,6 +49,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastFailedRequest, setLastFailedRequest] = useState(null); // For retry functionality
+  const [backendStatus, setBackendStatus] = useState("checking"); // checking, online, offline
+  const [fiboMode, setFiboMode] = useState("mocked"); // live, mocked
 
   const [snapshot, setSnapshot] = useState(null);
   const [plan, setPlan] = useState(null);
@@ -51,7 +64,16 @@ function App() {
     mainBenefit: "Turns math practice into a co-op board game",
     audienceSegment: "Parents of 7–12 year olds",
     audiencePain: "Kids hate math homework",
+    // Guardrails defaults
+    guardrails_brandVoice: "Playful, encouraging, educational",
+    guardrails_avoidWords: "boring, difficult",
+    guardrails_requiredTerms: "fun, family",
+    guardrails_disclaimer: "Results may vary. Ages 7+.",
   });
+
+  // Task C: Advanced Exploration Axes
+  const [advancedExplore, setAdvancedExplore] = useState(false);
+  const [selectedAxes, setSelectedAxes] = useState(["lighting_style", "color_palette", "background_type"]);
 
   const [resultRows, setResultRows] = useState([]);
 
@@ -59,6 +81,25 @@ function App() {
   const [winnerVariantId, setWinnerVariantId] = useState("");
   const [expandedSpecs, setExpandedSpecs] = useState({}); // Track which spec inspectors are expanded
   const [activeExplorationGrid, setActiveExplorationGrid] = useState(null); // Track active exploration grid popout: { variantId, variantName, variants: [] }
+
+  useEffect(() => {
+    performHealthCheck();
+  }, []);
+
+  const performHealthCheck = async () => {
+    setBackendStatus("checking");
+    try {
+      const data = await checkHealth();
+      setBackendStatus("online");
+      setFiboMode(data.mode);
+      // Clear connectivity errors if we match the pattern
+      if (error && error.includes("reachable")) {
+        setError("");
+      }
+    } catch (err) {
+      setBackendStatus("offline");
+    }
+  };
 
 
   // Fix A: Clear errors when step changes
@@ -91,6 +132,10 @@ function App() {
       mainBenefit: "Reef-safe, non-greasy formula that lasts all day",
       audienceSegment: "Health-conscious millennials aged 25-40",
       audiencePain: "Sunscreens feel heavy and leave white residue",
+      guardrails_brandVoice: "Clean, fresh, scientific yet accessible",
+      guardrails_avoidWords: "chemical, artificial, sticky",
+      guardrails_requiredTerms: "reef-safe, dermatologically tested",
+      guardrails_disclaimer: "Apply 15 minutes before sun exposure.",
     },
     saas: {
       name: "SaaS Product",
@@ -98,7 +143,11 @@ function App() {
       price: 49,
       mainBenefit: "AI-powered calendar that saves 5+ hours per week",
       audienceSegment: "Busy professionals and team leads",
-      audiencePain: "Calendar chaos and back-to-back meetings",
+      audiencePain: "Meetings interrupt deep work flow",
+      guardrails_brandVoice: "Professional, efficient, innovative",
+      guardrails_avoidWords: "manual, slow, complicated",
+      guardrails_requiredTerms: "AI-powered, seamless",
+      guardrails_disclaimer: "",
     },
     local_service: {
       name: "Local Service",
@@ -106,7 +155,11 @@ function App() {
       price: 149,
       mainBenefit: "Premium car detailing at your doorstep in 90 minutes",
       audienceSegment: "Austin car owners who value convenience",
-      audiencePain: "No time to take car to detailers, long wait times",
+      audiencePain: "Car washes are time consuming and scratch paint",
+      guardrails_brandVoice: "Trustworthy, detail-oriented, premium",
+      guardrails_avoidWords: "cheap, rush, scratch",
+      guardrails_requiredTerms: "eco-friendly, hand-wash",
+      guardrails_disclaimer: "Service area limited to Greater Austin.",
     },
   };
 
@@ -119,6 +172,10 @@ function App() {
         mainBenefit: "Turns math practice into a co-op board game",
         audienceSegment: "Parents of 7–12 year olds",
         audiencePain: "Kids hate math homework",
+        guardrails_brandVoice: "Playful, encouraging, educational",
+        guardrails_avoidWords: "boring, difficult",
+        guardrails_requiredTerms: "fun, family",
+        guardrails_disclaimer: "Results may vary. Ages 7+.",
       });
     } else {
       const template = campaignTemplates[templateKey];
@@ -128,6 +185,10 @@ function App() {
         mainBenefit: template.mainBenefit,
         audienceSegment: template.audienceSegment,
         audiencePain: template.audiencePain,
+        guardrails_brandVoice: template.guardrails_brandVoice || "",
+        guardrails_avoidWords: template.guardrails_avoidWords || "",
+        guardrails_requiredTerms: template.guardrails_requiredTerms || "",
+        guardrails_disclaimer: template.guardrails_disclaimer || "",
       });
     }
   };
@@ -161,18 +222,28 @@ function App() {
       ],
       audiences: [
         {
-          segment:
-            formValues.audienceSegment || "Primary performance marketing audience",
+          id: "audience_1",
+          segment: formValues.audienceSegment || "General Audience",
+          size_estimate: 1000000,
+          platform: "Meta",
           pain_points: formValues.audiencePain
             ? [formValues.audiencePain]
-            : ["Rising CAC", "Creative fatigue"],
+            : ["Current solutions are too expensive"],
           jobs_to_be_done: ["Improve ROAS", "Scale winners with less thrash"],
         },
       ],
+      guardrails: {
+        brand_voice: formValues.guardrails_brandVoice,
+        avoid_words: formValues.guardrails_avoidWords ? formValues.guardrails_avoidWords.split(',').map(s => s.trim()).filter(Boolean) : [],
+        required_terms: formValues.guardrails_requiredTerms ? formValues.guardrails_requiredTerms.split(',').map(s => s.trim()).filter(Boolean) : [],
+        disclaimer: formValues.guardrails_disclaimer,
+        prohibited_claims: [],
+        regulated_category: "none",
+        target_channel: "Meta"
+      },
       historical_performance: [],
       sales_data: [],
     };
-
     try {
       const planResponse = await createExperimentPlan(snapshotBody);
       setSnapshot(snapshotBody);
@@ -430,12 +501,16 @@ function App() {
 
       const req = {
         base_variant: variant,
-        axes: {
-          lighting_style: ["warm", "cool"],
-          color_palette: ["warm_golden", "pastel"],
-          background_type: ["studio", "natural"]
-        }
+        axes: {}
       };
+
+      // Construct axes payload from selectedAxes state
+      selectedAxes.forEach(axisKey => {
+        // Use the values defined in AXIS_OPTIONS
+        if (AXIS_OPTIONS[axisKey]) {
+          req.axes[axisKey] = AXIS_OPTIONS[axisKey].values;
+        }
+      });
 
       const response = await exploreVariants(req);
 
@@ -443,13 +518,51 @@ function App() {
       setActiveExplorationGrid({
         variantId: variant.variant_id,
         variantName: `Variant ${variant.variant_id}`, // e.g., "Variant B"
-        variants: response.generated
+        variants: response.generated,
+        axesExplored: response.meta.axes_explored // Pass the actual axes used for display
       });
 
       console.log(`Explored ${response.meta.count} variants in ${response.meta.runtime_ms}ms`);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to explore variants.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Phase 3.3 Task A: Auto-fix copy to satisfy guardrails
+   */
+  const handleAutoFix = async (variantId) => {
+    setError("");
+    setLoading(true);
+    try {
+      const variant = creatives.find((c) => c.variant_id === variantId);
+      if (!variant) throw new Error("Variant not found");
+
+      const req = {
+        variant: variant,
+        guardrails: plan.guardrails
+      };
+
+      const updatedVariant = await applyGuardrails(req);
+
+      setCreatives((prev) => prev.map(c =>
+        c.variant_id === updatedVariant.variant_id ? {
+          ...updatedVariant,
+          image_url: c.image_url,
+          image_status: c.image_status,
+          fibo_spec: c.fibo_spec,
+          previous_image_url: c.previous_image_url,
+          previous_timestamp: c.previous_timestamp,
+          changed_fields: updatedVariant.guardrails_report.fixed_issues
+        } : c
+      ));
+
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to auto-fix.");
     } finally {
       setLoading(false);
     }
@@ -569,6 +682,21 @@ function App() {
             </p>
           </div>
           <div className="header-actions">
+            <div className={`status-badge status-${backendStatus}`}>
+              {backendStatus === 'checking' && '⏳ Checking...'}
+              {backendStatus === 'online' && (
+                <span title={fiboMode === 'live' ? 'Real API connected' : 'Mock mode active'}>
+                  ✅ Online <small>({fiboMode.toUpperCase()})</small>
+                </span>
+              )}
+              {backendStatus === 'offline' && (
+                <>
+                  ❌ Offline
+                  <button className="status-retry-btn" onClick={performHealthCheck}>Retry</button>
+                </>
+              )}
+            </div>
+
             {loading && <span className="loading-indicator">Working…</span>}
             {step > 1 && (
               <button className="reset-btn" onClick={handleStartOver}>
@@ -676,6 +804,33 @@ function App() {
                   />
                 </label>
               </div>
+
+
+              <details style={{ marginTop: "1rem", marginBottom: "1.5rem", border: "1px solid rgba(148, 163, 184, 0.4)", borderRadius: "8px", padding: "0.75rem", background: "rgba(15, 23, 42, 0.4)" }}>
+                <summary style={{ cursor: "pointer", fontWeight: "600", color: "#9ca3af", fontSize: "0.9rem" }}>
+                  🛡️ Compliance & Brand Guardrails (Optional)
+                </summary>
+                <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <label>
+                    Brand Voice
+                    <input type="text" name="guardrails_brandVoice" value={formValues.guardrails_brandVoice || ""} onChange={handleInputChange} placeholder="e.g. Professional, witty, trustworthy" />
+                  </label>
+                  <div className="field-row">
+                    <label>
+                      Avoid Words (comma separated)
+                      <input type="text" name="guardrails_avoidWords" value={formValues.guardrails_avoidWords || ""} onChange={handleInputChange} placeholder="bad, glitchy, slow" />
+                    </label>
+                    <label>
+                      Required Terms
+                      <input type="text" name="guardrails_requiredTerms" value={formValues.guardrails_requiredTerms || ""} onChange={handleInputChange} placeholder="premium, guaranteed" />
+                    </label>
+                  </div>
+                  <label>
+                    Disclaimer
+                    <textarea name="guardrails_disclaimer" value={formValues.guardrails_disclaimer || ""} onChange={handleInputChange} placeholder="Terms and conditions apply..." style={{ minHeight: "60px" }} />
+                  </label>
+                </div>
+              </details>
 
               <div className="button-row">
                 <button type="submit" disabled={loading}>
@@ -805,6 +960,46 @@ function App() {
                           </div>
                         )}
 
+
+
+
+                        {/* Phase 3.2: Guardrails Report */}
+                        {c.guardrails_report && (
+                          <div style={{ marginTop: "0.5rem", fontSize: "0.75rem" }}>
+                            {c.guardrails_report.status === 'pass' ? (
+                              <span style={{ color: "#86efac", background: "rgba(34, 197, 94, 0.1)", padding: "0.15rem 0.5rem", borderRadius: "99px", border: "1px solid rgba(74, 222, 128, 0.3)", fontWeight: "600" }}>
+                                ✅ Guardrails: Pass
+                              </span>
+                            ) : (
+                              <div style={{ display: "inline-block" }}>
+                                <span style={{ color: "#fca5a5", background: "rgba(239, 68, 68, 0.1)", padding: "0.15rem 0.5rem", borderRadius: "99px", border: "1px solid rgba(239, 68, 68, 0.3)", fontWeight: "600" }}>
+                                  ⚠️ Guardrails: Needs fix
+                                </span>
+                                <ul style={{ margin: "0.35rem 0 0 0", paddingLeft: "1.2rem", color: "#fca5a5", fontSize: "0.7rem", lineHeight: "1.4" }}>
+                                  {c.guardrails_report.issues.map((issue, i) => <li key={i}>{issue}</li>)}
+                                </ul>
+                                <button
+                                  onClick={() => handleAutoFix(c.variant_id)}
+                                  disabled={loading || backendStatus === 'offline'}
+                                  style={{
+                                    marginTop: "0.25rem",
+                                    fontSize: "0.7rem",
+                                    padding: "0.2rem 0.5rem",
+                                    background: "rgba(239, 68, 68, 0.15)",
+                                    color: "#fca5a5",
+                                    border: "1px solid rgba(239, 68, 68, 0.4)",
+                                    borderRadius: "4px",
+                                    cursor: "pointer",
+                                    fontWeight: "600"
+                                  }}
+                                >
+                                  🪄 Auto-fix copy
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Task #2 Feature B: Show what changed on regeneration */}
                         {c.changed_fields && c.changed_fields.length > 0 && (
                           <div style={{ marginTop: "0.75rem", padding: "0.5rem", background: "rgba(34, 197, 94, 0.1)", borderRadius: "6px", border: "1px solid rgba(74, 222, 128, 0.3)" }}>
@@ -922,24 +1117,61 @@ function App() {
                             />
                             <button
                               onClick={() => handleRegenerateImage(c.variant_id)}
-                              disabled={loading}
+                              disabled={loading || backendStatus === 'offline'}
                             >
                               Regenerate image
                             </button>
 
-                            {/* Phase 3.1 Task B: Explore 8 Visual Variants Button */}
-                            <button
-                              onClick={() => handleExploreVariants(c.variant_id)}
-                              disabled={loading}
-                              style={{
-                                marginTop: "0.5rem",
-                                background: "rgba(139, 92, 246, 0.15)",
-                                borderColor: "rgba(167, 139, 250, 0.5)",
-                                color: "#c4b5fd"
-                              }}
-                            >
-                              🔍 Explore 8 Visual Variants
-                            </button>
+
+
+                            {/* Phase 3.1 Task B / C: Explore Visual Variants (Advanced) */}
+                            <div style={{ marginTop: "0.75rem", borderTop: "1px solid rgba(148, 163, 184, 0.2)", paddingTop: "0.5rem" }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                                <label style={{ fontSize: "0.75rem", display: "flex", alignItems: "center", cursor: "pointer", color: "#94a3b8" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={advancedExplore}
+                                    onChange={(e) => setAdvancedExplore(e.target.checked)}
+                                    style={{ marginRight: "0.5rem" }}
+                                  />
+                                  Advanced Axis Config
+                                </label>
+                              </div>
+
+                              {advancedExplore && (
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                                  {[0, 1, 2].map(idx => (
+                                    <select
+                                      key={idx}
+                                      value={selectedAxes[idx]}
+                                      onChange={(e) => {
+                                        const newAxes = [...selectedAxes];
+                                        newAxes[idx] = e.target.value;
+                                        setSelectedAxes(newAxes);
+                                      }}
+                                      style={{ fontSize: "0.7rem", padding: "0.2rem", borderRadius: "4px", background: "rgba(15, 23, 42, 0.5)", color: "#cbd5e1", border: "1px solid rgba(148, 163, 184, 0.3)" }}
+                                    >
+                                      {Object.entries(AXIS_OPTIONS).map(([key, opt]) => (
+                                        <option key={key} value={key}>{opt.label}</option>
+                                      ))}
+                                    </select>
+                                  ))}
+                                </div>
+                              )}
+
+                              <button
+                                onClick={() => handleExploreVariants(c.variant_id)}
+                                disabled={loading || backendStatus === 'offline'}
+                                style={{
+                                  width: "100%",
+                                  background: "rgba(139, 92, 246, 0.15)",
+                                  borderColor: "rgba(167, 139, 250, 0.5)",
+                                  color: "#c4b5fd"
+                                }}
+                              >
+                                🔍 Explore 8 Variants
+                              </button>
+                            </div>
                           </div>
                         )}
 
@@ -951,7 +1183,7 @@ function App() {
                 <div className="button-row">
                   <button
                     onClick={handleScoreCreatives}
-                    disabled={loading || !creatives.length}
+                    disabled={loading || !creatives.length || backendStatus === 'offline'}
                   >
                     {loading ? "Scoring…" : "Score creatives"}
                   </button>
@@ -1086,7 +1318,7 @@ function App() {
               </div>
 
               <div className="button-row">
-                <button type="submit" disabled={loading}>
+                <button type="submit" disabled={loading || backendStatus === 'offline'}>
                   {loading ? "Crunching…" : "Get recommendation"}
                 </button>
                 <button
@@ -1229,174 +1461,178 @@ function App() {
       </div>
 
       {/* Phase 3.1 Task B: Exploration Grid Popout Panel */}
-      {activeExplorationGrid && (
-        <div style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          maxHeight: "75vh",
-          backgroundColor: "rgba(15, 23, 42, 0.98)",
-          borderTop: "2px solid rgba(139, 92, 246, 0.5)",
-          boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.5)",
-          zIndex: 1000,
-          overflow: "auto",
-          backdropFilter: "blur(10px)"
-        }}>
+      {
+        activeExplorationGrid && (
           <div style={{
-            maxWidth: "1600px",
-            margin: "0 auto",
-            padding: "1.5rem 2rem"
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            maxHeight: "75vh",
+            backgroundColor: "rgba(15, 23, 42, 0.98)",
+            borderTop: "2px solid rgba(139, 92, 246, 0.5)",
+            boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.5)",
+            zIndex: 1000,
+            overflow: "auto",
+            backdropFilter: "blur(10px)"
           }}>
-            {/* Header with title and close button */}
             <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "1.5rem",
-              paddingBottom: "1rem",
-              borderBottom: "1px solid rgba(148, 163, 184, 0.2)"
+              maxWidth: "1600px",
+              margin: "0 auto",
+              padding: "1.5rem 2rem"
             }}>
-              <div>
-                <div style={{
-                  fontSize: "1.25rem",
-                  fontWeight: "700",
-                  color: "#c4b5fd",
-                  marginBottom: "0.25rem"
-                }}>
-                  🔍 Visual Exploration Grid
+              {/* Header with title and close button */}
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1.5rem",
+                paddingBottom: "1rem",
+                borderBottom: "1px solid rgba(148, 163, 184, 0.2)"
+              }}>
+                <div>
+                  <div style={{
+                    fontSize: "1.25rem",
+                    fontWeight: "700",
+                    color: "#c4b5fd",
+                    marginBottom: "0.25rem"
+                  }}>
+                    🔍 Visual Exploration Grid
+                  </div>
+                  <div style={{
+                    fontSize: "0.9rem",
+                    color: "#94a3b8"
+                  }}>
+                    Showing {activeExplorationGrid.variants.length} variants for <strong style={{ color: "#c4b5fd" }}>{activeExplorationGrid.variantName}</strong>
+                  </div>
                 </div>
-                <div style={{
-                  fontSize: "0.9rem",
-                  color: "#94a3b8"
-                }}>
-                  Showing {activeExplorationGrid.variants.length} variants for <strong style={{ color: "#c4b5fd" }}>{activeExplorationGrid.variantName}</strong>
-                </div>
-              </div>
-              <button
-                onClick={() => setActiveExplorationGrid(null)}
-                style={{
-                  background: "rgba(239, 68, 68, 0.2)",
-                  border: "1px solid rgba(239, 68, 68, 0.4)",
-                  borderRadius: "6px",
-                  padding: "0.5rem 1rem",
-                  color: "#fca5a5",
-                  fontSize: "1rem",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  transition: "all 0.2s"
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = "rgba(239, 68, 68, 0.3)";
-                  e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.6)";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
-                  e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.4)";
-                }}
-              >
-                ✕ Close
-              </button>
-            </div>
-
-            {/* Grid - Always 2 rows x 4 columns */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-              gap: "1.5rem"
-            }}>
-              {activeExplorationGrid.variants.map((exploredVariant, idx) => (
-                <div key={idx} style={{
-                  background: "rgba(0, 0, 0, 0.4)",
-                  borderRadius: "8px",
-                  padding: "1rem",
-                  border: "1px solid rgba(148, 163, 184, 0.2)",
-                  display: "flex",
-                  flexDirection: "column",
-                  transition: "all 0.2s"
-                }}
+                <button
+                  onClick={() => setActiveExplorationGrid(null)}
+                  style={{
+                    background: "rgba(239, 68, 68, 0.2)",
+                    border: "1px solid rgba(239, 68, 68, 0.4)",
+                    borderRadius: "6px",
+                    padding: "0.5rem 1rem",
+                    color: "#fca5a5",
+                    fontSize: "1rem",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.5)";
-                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(139, 92, 246, 0.2)";
+                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.3)";
+                    e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.6)";
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(148, 163, 184, 0.2)";
-                    e.currentTarget.style.boxShadow = "none";
+                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
+                    e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.4)";
                   }}
                 >
-                  {exploredVariant.image_url && (
-                    <img
-                      src={exploredVariant.image_url}
-                      alt={`Explored variant ${idx + 1}`}
-                      style={{
-                        width: "100%",
-                        height: "auto",
-                        aspectRatio: "1 / 1",
-                        objectFit: "cover",
-                        borderRadius: "6px",
-                        marginBottom: "0.75rem"
-                      }}
-                    />
-                  )}
-                  <div style={{
-                    fontSize: "0.85rem",
-                    color: "#94a3b8",
-                    marginBottom: "0.5rem",
-                    textAlign: "center",
-                    fontWeight: "700"
-                  }}>
-                    Variant {idx + 1}
+                  ✕ Close
+                </button>
+              </div>
+
+              {/* Grid - Always 2 rows x 4 columns */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: "1.5rem"
+              }}>
+                {activeExplorationGrid.variants.map((exploredVariant, idx) => (
+                  <div key={idx} style={{
+                    background: "rgba(0, 0, 0, 0.4)",
+                    borderRadius: "8px",
+                    padding: "1rem",
+                    border: "1px solid rgba(148, 163, 184, 0.2)",
+                    display: "flex",
+                    flexDirection: "column",
+                    transition: "all 0.2s"
+                  }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.5)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(139, 92, 246, 0.2)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.borderColor = "rgba(148, 163, 184, 0.2)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    {exploredVariant.image_url && (
+                      <img
+                        src={exploredVariant.image_url}
+                        alt={`Explored variant ${idx + 1}`}
+                        style={{
+                          width: "100%",
+                          height: "auto",
+                          aspectRatio: "1 / 1",
+                          objectFit: "cover",
+                          borderRadius: "6px",
+                          marginBottom: "0.75rem"
+                        }}
+                      />
+                    )}
+                    <div style={{
+                      fontSize: "0.85rem",
+                      color: "#94a3b8",
+                      marginBottom: "0.5rem",
+                      textAlign: "center",
+                      fontWeight: "700"
+                    }}>
+                      Variant {idx + 1}
+                    </div>
+                    <div style={{
+                      fontSize: "0.75rem",
+                      color: "#cbd5e1",
+                      lineHeight: "1.6",
+                      flex: "1"
+                    }}>
+                      {/* Dynamically render the axes that were explored */}
+                      {activeExplorationGrid.axesExplored && Object.keys(activeExplorationGrid.axesExplored).map(axisKey => {
+                        const axisLabel = AXIS_OPTIONS[axisKey]?.label || axisKey;
+                        const val = exploredVariant.fibo_spec?.[axisKey];
+                        if (!val) return null;
+                        return (
+                          <div key={axisKey} style={{ marginBottom: "0.25rem" }}>
+                            <strong>{axisLabel}:</strong> {val}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {exploredVariant.fibo_spec && (
+                      <details style={{ marginTop: "0.75rem" }}>
+                        <summary style={{
+                          fontSize: "0.7rem",
+                          color: "#93c5fd",
+                          cursor: "pointer",
+                          textAlign: "center",
+                          fontWeight: "600"
+                        }}>
+                          View Full JSON
+                        </summary>
+                        <pre style={{
+                          fontSize: "0.65rem",
+                          color: "#e2e8f0",
+                          background: "rgba(0, 0, 0, 0.5)",
+                          padding: "0.5rem",
+                          borderRadius: "4px",
+                          overflow: "auto",
+                          maxHeight: "200px",
+                          marginTop: "0.5rem",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word"
+                        }}>
+                          {JSON.stringify(exploredVariant.fibo_spec, null, 2)}
+                        </pre>
+                      </details>
+                    )}
                   </div>
-                  <div style={{
-                    fontSize: "0.75rem",
-                    color: "#cbd5e1",
-                    lineHeight: "1.6",
-                    flex: "1"
-                  }}>
-                    {exploredVariant.fibo_spec?.lighting_style && (
-                      <div style={{ marginBottom: "0.25rem" }}>💡 <strong>Lighting:</strong> {exploredVariant.fibo_spec.lighting_style}</div>
-                    )}
-                    {exploredVariant.fibo_spec?.color_palette && (
-                      <div style={{ marginBottom: "0.25rem" }}>🎨 <strong>Palette:</strong> {exploredVariant.fibo_spec.color_palette}</div>
-                    )}
-                    {exploredVariant.fibo_spec?.background_type && (
-                      <div>🖼️ <strong>Background:</strong> {exploredVariant.fibo_spec.background_type}</div>
-                    )}
-                  </div>
-                  {exploredVariant.fibo_spec && (
-                    <details style={{ marginTop: "0.75rem" }}>
-                      <summary style={{
-                        fontSize: "0.7rem",
-                        color: "#93c5fd",
-                        cursor: "pointer",
-                        textAlign: "center",
-                        fontWeight: "600"
-                      }}>
-                        View Full JSON
-                      </summary>
-                      <pre style={{
-                        fontSize: "0.65rem",
-                        color: "#e2e8f0",
-                        background: "rgba(0, 0, 0, 0.5)",
-                        padding: "0.5rem",
-                        borderRadius: "4px",
-                        overflow: "auto",
-                        maxHeight: "200px",
-                        marginTop: "0.5rem",
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word"
-                      }}>
-                        {JSON.stringify(exploredVariant.fibo_spec, null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }
 

@@ -79,6 +79,15 @@ async def generate_demo_outputs():
                 "pain_points": ["Calendar chaos and back-to-back meetings"],
                 "jobs_to_be_done": ["Improve productivity", "Reduce meeting overhead"]
             }],
+            "guardrails": {
+                "brand_voice": "Passionate, expert, accessible",
+                "avoid_words": ["cheap", "instant"],
+                "required_terms": ["barista-quality", "warranty"],
+                "disclaimer": "Machine requires 15-minute warmup.",
+                "prohibited_claims": [],
+                "regulated_category": "none",
+                "target_channel": "Meta"
+            },
             "historical_performance": [],
             "sales_data": []
         }
@@ -215,7 +224,77 @@ async def generate_demo_outputs():
                             spec = explored.get("fibo_spec", {})
                             print(f"   ✓ Downloaded variant {idx}: {spec.get('lighting_style', '?')}/{spec.get('color_palette', '?')}/{spec.get('background_type', '?')}")
                     except Exception as e:
-                        print(f"   ⚠️  Could not download explored variant {idx}: {e}")
+                            print(f"   ⚠️  Could not download explored variant {idx}: {e}")
+        
+        # Step 5b: Explore Advanced Variants (New Axes)
+        print("\n5️⃣  ℹ️ Running Advanced Visual Exploration (Shot Type + Camera Angle)...")
+        if variant_b:
+            explore_adv_req = {
+                "base_variant": variant_b,
+                "axes": {
+                    "shot_type": ["product_only", "lifestyle"],
+                    "camera_angle": ["eye_level", "high_angle"],
+                    "lighting_style": ["warm", "cool"]
+                }
+            }
+            
+            # Save request
+            with open(payloads_dir / "05b_explore_advanced_request.json", "w") as f:
+                json.dump(explore_adv_req, f, indent=2)
+            
+            response_json = await safe_request("POST", f"{API_BASE}/explore-variants", json=explore_adv_req)
+            adv_exploration = response_json
+            
+            # Save response
+            with open(payloads_dir / "05b_explore_advanced_response.json", "w") as f:
+                json.dump(adv_exploration, f, indent=2)
+            
+            print(f"   ✓ Generated {adv_exploration['meta']['count']} advanced variants")
+            
+            # Download explored variant images
+            for idx, explored in enumerate(adv_exploration["generated"], 1):
+                if explored.get("image_url"):
+                    try:
+                        img_response = await client.get(explored["image_url"])
+                        if img_response.status_code == 200:
+                            ext = "png" if "png" in explored["image_url"] else "jpg"
+                            img_path = images_dir / f"explored_advanced_{idx:02d}.{ext}"
+                            with open(img_path, "wb") as f:
+                                f.write(img_response.content)
+                    except Exception as e:
+                        pass # Squelch errors for demo speed
+
+        # Step 5c: Test Guardrails Auto-Fix
+        print("\n5️⃣  ℹ️ Testing Guardrails Auto-Fix...")
+        # Manually create a non-compliant variant (simulating user edit)
+        if variant_b:
+            bad_variant = variant_b.copy()
+            bad_variant["primary_text"] = "This stuff is cheap and works instant." # Violates 'cheap', 'instant' and missing required terms
+            bad_variant["variant_id"] = "bad_copy_test"
+            
+            # Guardrails from plan
+            guardrails = plan["guardrails"]
+            
+            auto_fix_req = {
+                "variant": bad_variant,
+                "guardrails": guardrails
+            }
+            
+            with open(payloads_dir / "05c_auto_fix_request.json", "w") as f:
+                json.dump(auto_fix_req, f, indent=2)
+            
+            fixed_variant = await safe_request("POST", f"{API_BASE}/apply-guardrails", json=auto_fix_req)
+            
+            with open(payloads_dir / "05c_auto_fix_response.json", "w") as f:
+                json.dump(fixed_variant, f, indent=2)
+                
+            print(f"   ✓ Auto-fix applied.")
+            try:
+                print(f"   Original: {bad_variant['primary_text']}")
+                print(f"   Fixed:    {fixed_variant['primary_text']}")
+                print(f"   Changed:  {str(fixed_variant['guardrails_report'].get('fixed_issues', []))}")
+            except Exception:
+                print("   (Skipped printing details due to encoding error)")
     
     # Generate Summary Markdown
     print("\n6️⃣  Generating summary documentation...")
@@ -447,4 +526,3 @@ if __name__ == "__main__":
     print("Phase 3.1 Task C: Evidence Pack Creation\n")
     
     asyncio.run(generate_demo_outputs())
-```

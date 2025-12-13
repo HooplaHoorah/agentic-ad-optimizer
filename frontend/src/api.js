@@ -77,3 +77,31 @@ export function exploreVariants(req) {
   return apiPost("/explore-variants", req);
 }
 
+// Phase 3.2 Task A: Backend Health Check
+export async function checkHealth() {
+  try {
+    // Set a short timeout for health checks so the UI doesn't hang
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+    const res = await fetch(`${API_BASE}/health`, {
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      throw new Error(`Backend returned status ${res.status}`);
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn("Health check failed:", err);
+    throw err;
+  }
+}
+
+
+// Phase 3.3 Task A: Auto-fix guardrails
+export function applyGuardrails(req) {
+  return apiPost("/apply-guardrails", req);
+}

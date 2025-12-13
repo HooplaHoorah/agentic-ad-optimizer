@@ -27,11 +27,23 @@ class HistoricalPerformance(BaseModel):
     revenue: float
 
 
+
+class Guardrails(BaseModel):
+    brand_voice: Optional[str] = None
+    avoid_words: List[str] = []
+    required_terms: List[str] = []
+    disclaimer: Optional[str] = None
+    prohibited_claims: List[str] = []
+    regulated_category: str = "none"
+    target_channel: str = "Meta"
+
+
 class BusinessSnapshot(BaseModel):
     products: List[Product]
     audiences: List[Audience]
     historical_performance: List[HistoricalPerformance]
     sales_data: Optional[List[Dict[str, float]]] = None
+    guardrails: Optional[Guardrails] = None
 
 
 class VariantPlan(BaseModel):
@@ -52,6 +64,7 @@ class ExperimentPlan(BaseModel):
     variants: List[VariantPlan]
     metrics: List[str]
     sample_size_rules: SampleSizeRules
+    guardrails: Optional[Guardrails] = None
 
 
 class CreativeVariant(BaseModel):
@@ -64,6 +77,8 @@ class CreativeVariant(BaseModel):
     image_url: Optional[str] = None
     fibo_spec: Optional[Dict[str, Any]] = None
     image_status: Optional[str] = None
+    guardrails_report: Optional[Dict[str, Any]] = None
+
 
 class RubricScore(BaseModel):
     creative_id: str
