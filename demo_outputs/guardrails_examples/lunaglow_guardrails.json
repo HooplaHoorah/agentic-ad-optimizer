@@ -1,0 +1,50 @@
+{
+  "products": [
+    {
+      "id": "product_1",
+      "name": "LunaGlow Sunscreen SPF 50",
+      "price": 32.0,
+      "margin": 60.0,
+      "category": "Beauty & Personal Care",
+      "benefits": [
+        "Reef-safe, non-greasy formula that lasts all day"
+      ],
+      "objections": [
+        "Feels sticky",
+        "Leaves white cast"
+      ]
+    }
+  ],
+  "audiences": [
+    {
+      "id": "audience_1",
+      "segment": "Health-conscious millennials",
+      "size_estimate": 1000000.0,
+      "platform": "Instagram",
+      "pain_points": [
+        "Sunscreens feel heavy and look chalky"
+      ],
+      "jobs_to_be_done": [
+        "Protect skin without looking pale"
+      ]
+    }
+  ],
+  "guardrails": {
+    "brand_voice": "Clean, fresh, scientific yet accessible",
+    "avoid_words": [
+      "cure",
+      "guaranteed"
+    ],
+    "required_terms": [
+      "reef-safe",
+      "broad-spectrum",
+      "SPF 50"
+    ],
+    "disclaimer": "Reapply every 2 hours and after swimming/sweating.",
+    "prohibited_claims": [],
+    "regulated_category": "health",
+    "target_channel": "Instagram"
+  },
+  "historical_performance": [],
+  "sales_data": []
+}

@@ -309,6 +309,7 @@ class ExploreVariantsRequest(BaseModel):
         "color_palette": ["warm_golden", "pastel"],
         "background_type": ["studio", "natural"]
     }
+    preset: Optional[str] = "full8"  # "fast4" or "full8"
 
 
 class ExploreVariantsResponse(BaseModel):
@@ -332,6 +333,23 @@ def explore_variants(req: ExploreVariantsRequest) -> ExploreVariantsResponse:
     start_time = time.time()
     generated_variants: list[CreativeVariant] = []
     
+    # Handle Presets
+    if req.preset == "fast4":
+        # Override for speed: 2 axes x 2 values = 4 variants
+        req.axes = {
+            "lighting_style": ["warm", "cool"],
+            "color_palette": ["warm_golden", "pastel"]
+        }
+    elif req.preset == "full8":
+        # Ensure we have the standard 3 axes if not explicitly provided
+        # (Default is already 3 axes in model, but good to be explicit if user cleared it)
+        if len(req.axes) < 3:
+             req.axes = {
+                "lighting_style": ["warm", "cool"],
+                "color_palette": ["warm_golden", "pastel"],
+                "background_type": ["studio", "natural"]
+             }
+
     # Extract axis keys and value lists dynamically
     # e.g. keys=["lighting_style", "shot_type"], values=[["warm", "cool"], ["closeup", "wide"]]
     keys = list(req.axes.keys())
@@ -390,7 +408,11 @@ class ApplyGuardrailsRequest(BaseModel):
     variant: CreativeVariant
     guardrails: Guardrails
 
-@app.post("/apply-guardrails", response_model=CreativeVariant)
+class ApplyGuardrailsResponse(BaseModel):
+    variant: CreativeVariant
+    changed_fields: list[str]
+
+@app.post("/apply-guardrails", response_model=ApplyGuardrailsResponse)
 def apply_guardrails(req: ApplyGuardrailsRequest):
     """Auto-fix a creative variant to satisfy guardrails."""
     variant = req.variant.model_copy(deep=True)
@@ -427,11 +449,20 @@ def apply_guardrails(req: ApplyGuardrailsRequest):
                  variant.hook = pattern.sub("***", variant.hook)
                  changed_fields.append(f"hook (censored '{word}')")
     
+    # Compare before/after to determine simple changed_fields list
+    final_changed_fields = []
+    if variant.primary_text != req.variant.primary_text:
+        final_changed_fields.append("primary_text")
+    if variant.headline != req.variant.headline:
+        final_changed_fields.append("headline")
+    if variant.hook != req.variant.hook:
+        final_changed_fields.append("hook")
+    
     # Update report
     variant.guardrails_report = {
         "status": "pass", 
         "issues": [], 
-        "fixed_issues": changed_fields
+        "fixed_issues": changed_fields # keep detailed logs here
     }
     
-    return variant
+    return ApplyGuardrailsResponse(variant=variant, changed_fields=final_changed_fields)

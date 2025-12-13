@@ -486,13 +486,14 @@ function App() {
   };
 
   /**
-   * Phase 3.1 Task B: Explore 8 visual variants
-   * Generates a grid of 8 variants exploring FIBO parameter combinations
+   * Phase 3.1 Task B: Explore variants (Fast vs Full)
+   * Generates a grid of variants exploring FIBO parameter combinations
    * Opens in a full-width popout panel at the bottom
    */
-  const handleExploreVariants = async (variantId) => {
+  const handleExploreVariants = async (variantId, preset = "full8") => {
     setError("");
-    setLoading(true);
+    setLoading(true); // Maybe refine loading text locally if we could, but global loading is boolean.
+    // We can use a ref or another state for detailed loading status if we wanted, but standard Loading is fine.
     try {
       const variant = creatives.find((c) => c.variant_id === variantId);
       if (!variant) {
@@ -501,7 +502,8 @@ function App() {
 
       const req = {
         base_variant: variant,
-        axes: {}
+        axes: {},
+        preset: preset // "fast4" or "full8"
       };
 
       // Construct axes payload from selectedAxes state
@@ -546,7 +548,10 @@ function App() {
         guardrails: plan.guardrails
       };
 
-      const updatedVariant = await applyGuardrails(req);
+      const response = await applyGuardrails(req);
+      // New structure: { variant: ..., changed_fields: [...] }
+      const updatedVariant = response.variant;
+      const fixedFields = response.changed_fields;
 
       setCreatives((prev) => prev.map(c =>
         c.variant_id === updatedVariant.variant_id ? {
@@ -556,7 +561,7 @@ function App() {
           fibo_spec: c.fibo_spec,
           previous_image_url: c.previous_image_url,
           previous_timestamp: c.previous_timestamp,
-          changed_fields: updatedVariant.guardrails_report.fixed_issues
+          changed_fields: fixedFields // Use the explicit list from backend
         } : c
       ));
 
@@ -697,7 +702,7 @@ function App() {
               )}
             </div>
 
-            {loading && <span className="loading-indicator">Working…</span>}
+            {loading && <span className="loading-indicator">Thinking...</span>}
             {step > 1 && (
               <button className="reset-btn" onClick={handleStartOver}>
                 ↻ Start over
@@ -1138,39 +1143,80 @@ function App() {
                                 </label>
                               </div>
 
-                              {advancedExplore && (
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                                  {[0, 1, 2].map(idx => (
-                                    <select
-                                      key={idx}
-                                      value={selectedAxes[idx]}
-                                      onChange={(e) => {
-                                        const newAxes = [...selectedAxes];
-                                        newAxes[idx] = e.target.value;
-                                        setSelectedAxes(newAxes);
-                                      }}
-                                      style={{ fontSize: "0.7rem", padding: "0.2rem", borderRadius: "4px", background: "rgba(15, 23, 42, 0.5)", color: "#cbd5e1", border: "1px solid rgba(148, 163, 184, 0.3)" }}
-                                    >
-                                      {Object.entries(AXIS_OPTIONS).map(([key, opt]) => (
-                                        <option key={key} value={key}>{opt.label}</option>
-                                      ))}
-                                    </select>
-                                  ))}
+                              {advancedExplore ? (
+                                <>
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                                    {[0, 1, 2].map(idx => (
+                                      <select
+                                        key={idx}
+                                        value={selectedAxes[idx]}
+                                        onChange={(e) => {
+                                          const newAxes = [...selectedAxes];
+                                          newAxes[idx] = e.target.value;
+                                          setSelectedAxes(newAxes);
+                                        }}
+                                        style={{ fontSize: "0.7rem", padding: "0.2rem", borderRadius: "4px", background: "rgba(15, 23, 42, 0.5)", color: "#cbd5e1", border: "1px solid rgba(148, 163, 184, 0.3)" }}
+                                      >
+                                        {Object.entries(AXIS_OPTIONS).map(([key, opt]) => (
+                                          <option key={key} value={key}>{opt.label}</option>
+                                        ))}
+                                      </select>
+                                    ))}
+                                  </div>
+                                  <button
+                                    onClick={() => handleExploreVariants(c.variant_id, "full8")}
+                                    disabled={loading || backendStatus === 'offline'}
+                                    style={{
+                                      width: "100%",
+                                      background: "rgba(139, 92, 246, 0.15)",
+                                      borderColor: "rgba(167, 139, 250, 0.5)",
+                                      color: "#c4b5fd"
+                                    }}
+                                  >
+                                    🔍 Explore 8 Variants (Custom)
+                                  </button>
+                                </>
+                              ) : (
+                                <div style={{ display: "flex", gap: "0.5rem" }}>
+                                  {/* Fast 4 Button (Primary) */}
+                                  <button
+                                    onClick={() => handleExploreVariants(c.variant_id, "fast4")}
+                                    disabled={loading || backendStatus === 'offline'}
+                                    style={{
+                                      flex: 1,
+                                      background: "rgba(139, 92, 246, 0.2)",
+                                      borderColor: "rgba(167, 139, 250, 0.6)",
+                                      color: "#ddd6fe",
+                                      fontWeight: "600"
+                                    }}
+                                    title="Generate 4 variants (Speed: Fast)"
+                                  >
+                                    ⚡ Explore (Fast 4)
+                                  </button>
+
+                                  {/* Full 8 Button (Secondary) */}
+                                  <button
+                                    onClick={() => handleExploreVariants(c.variant_id, "full8")}
+                                    disabled={loading || backendStatus === 'offline'}
+                                    style={{
+                                      flex: 1,
+                                      background: "rgba(15, 23, 42, 0.4)",
+                                      borderColor: "rgba(148, 163, 184, 0.3)",
+                                      color: "#94a3b8",
+                                      fontSize: "0.75rem"
+                                    }}
+                                    title={fiboMode === 'live' ? "May take ~2 minutes" : "Instant in mock mode"}
+                                  >
+                                    Explore (Full 8)
+                                  </button>
                                 </div>
                               )}
 
-                              <button
-                                onClick={() => handleExploreVariants(c.variant_id)}
-                                disabled={loading || backendStatus === 'offline'}
-                                style={{
-                                  width: "100%",
-                                  background: "rgba(139, 92, 246, 0.15)",
-                                  borderColor: "rgba(167, 139, 250, 0.5)",
-                                  color: "#c4b5fd"
-                                }}
-                              >
-                                🔍 Explore 8 Variants
-                              </button>
+                              {!advancedExplore && (
+                                <div style={{ fontSize: "0.65rem", color: "#64748b", marginTop: "0.25rem", textAlign: "center" }}>
+                                  {fiboMode === 'live' ? "Fast 4 (~30s) vs Full 8 (~2m)" : "Mock Mode: Instant generation"}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}

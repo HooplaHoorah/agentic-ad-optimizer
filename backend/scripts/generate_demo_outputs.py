@@ -64,29 +64,29 @@ async def generate_demo_outputs():
         snapshot_data = {
             "products": [{
                 "id": "product_1",
-                "name": "FlowPilot AI Scheduler",
-                "price": 49.0,
-                "margin": 35.0,
-                "category": "SaaS",
-                "benefits": ["AI-powered calendar that saves 5+ hours per week"],
-                "objections": ["Learning curve concerns"]
+                "name": "LunaGlow Sunscreen SPF 50",
+                "price": 32.0,
+                "margin": 60.0,
+                "category": "Beauty & Personal Care",
+                "benefits": ["Reef-safe, non-greasy formula that lasts all day"],
+                "objections": ["Feels sticky", "Leaves white cast"]
             }],
             "audiences": [{
                 "id": "audience_1",
-                "segment": "Busy professionals and team leads",
-                "size_estimate": 500000.0,
-                "platform": "Meta",
-                "pain_points": ["Calendar chaos and back-to-back meetings"],
-                "jobs_to_be_done": ["Improve productivity", "Reduce meeting overhead"]
+                "segment": "Health-conscious millennials",
+                "size_estimate": 1000000.0,
+                "platform": "Instagram",
+                "pain_points": ["Sunscreens feel heavy and look chalky"],
+                "jobs_to_be_done": ["Protect skin without looking pale"]
             }],
             "guardrails": {
-                "brand_voice": "Passionate, expert, accessible",
-                "avoid_words": ["cheap", "instant"],
-                "required_terms": ["barista-quality", "warranty"],
-                "disclaimer": "Machine requires 15-minute warmup.",
+                "brand_voice": "Clean, fresh, scientific yet accessible",
+                "avoid_words": ["cure", "guaranteed"],
+                "required_terms": ["reef-safe", "broad-spectrum", "SPF 50"],
+                "disclaimer": "Reapply every 2 hours and after swimming/sweating.",
                 "prohibited_claims": [],
-                "regulated_category": "none",
-                "target_channel": "Meta"
+                "regulated_category": "health",
+                "target_channel": "Instagram"
             },
             "historical_performance": [],
             "sales_data": []
@@ -269,7 +269,7 @@ async def generate_demo_outputs():
         # Manually create a non-compliant variant (simulating user edit)
         if variant_b:
             bad_variant = variant_b.copy()
-            bad_variant["primary_text"] = "This stuff is cheap and works instant." # Violates 'cheap', 'instant' and missing required terms
+            bad_variant["primary_text"] = "This stuff is guaranteed to cure sun damage instantly." # Violates 'guaranteed', 'cure' and missing required terms
             bad_variant["variant_id"] = "bad_copy_test"
             
             # Guardrails from plan
