@@ -72,7 +72,7 @@ A list of creative variants corresponding to each variant in the plan:
 
 - `image_url`: URL of the generated FIBO image (string). When no FIBO API key is configured, this will be a placeholder image.
 - `fibo_spec`: object representing the `FiboImageSpec` used to generate the image (e.g., structured prompt, mood, style).
- - `image_status`: status of image generation (string; one of `"complete"`, `"pending"`, or `"error"`). Indicates whether the image was successfully generated.
+ - `- `image_status`: status of image generation (string; one of `"fibo"`, `"mocked"`, or `"error"`). A value of `"fibo"` means the image was generated using Bria's FIBO API; `"mocked"` means a deterministic placeholder was used; `"error"` indicates that image generation failed.
 - 
 ## Regenerate Image
 
@@ -81,8 +81,8 @@ A list of creative variants corresponding to each variant in the plan:
 Regenerates the FIBO image for an existing creative using a partial update to the FiboImageSpec.
 
 ### Request body (RegenerateRequest)
-- `creative_id`: string identifier of the creative variant to regenerate
-- `spec_patch`: partial `FiboImageSpec` object containing fields to override (e.g., mood, style, palette). Only the provided fields will be merged into the existing spec.
+- - `variant`: the full CreativeVariant object for the creative you want to regenerate. The backend uses this object to merge its existing `fibo_spec` with the provided patch.
+- `spec_patch`: a partial FiboImageSpec object containing only the fields you want to override (e.g. `camera_angle`, `shot_type`, `lighting_style`, `color_palette`, `background_type`, `prompt`). Only provided fields are merged into the existing spwill be merged into the existing spec.
 
 ### Response body (CreativeVariant)
 Returns the updated creative variant with new `image_url`, updated `fibo_spec`, and `image_status` fields. See the CreativeVariant response above for field descriptions.
